@@ -136,22 +136,22 @@ class SynergyAPI {
      * @param $conditions
      * @return array|mixed|string
      */
-    public function getByConditions($action, $conditions)
+    public function getByConditions($target, $action, $conditions)
     {
         return $this->sendRequest($action, array_merge($conditions, $this->auth));
     }
 
-    public function create($action, $request)
+    public function create($target, $action, $request)
     {
 
     }
 
-    public function update($action, $request)
+    public function update($target, $action, $id, $request)
     {
 
     }
 
-    public function delete($action, $id)
+    public function delete($target, $action, $id)
     {
 
     }

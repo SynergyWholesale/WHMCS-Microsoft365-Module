@@ -6,6 +6,15 @@ class Subscription {
     const SWS_SUBSCRIPTION_TARGET = 'tblSubscriptions';
     const WHMCS_SUBSCRIPTION_TABLE = 'tblsubscriptions';
     const WHMCS_TENANT_TABLE = 'tbltenants';
+
+    const TABLE_COLUMNS = [
+        'id',
+        'tenantId',
+        'remoteSwsId',
+        'remoteTenantSwsId',
+        'productId',
+    ];
+
     private $synergyApi;
     private $swsApiInstant;
     private $whmcsInstant;

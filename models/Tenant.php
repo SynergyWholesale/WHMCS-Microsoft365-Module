@@ -11,6 +11,13 @@ class Tenant {
     private $swsApiInstant;
     private $whmcsInstant;
 
+    const TABLE_COLUMNS = [
+        'clientId',
+        'id',
+        'remoteSwsId',
+        'domainPrefix',
+    ];
+
     public function __construct($resellerId, $apiKey, $tenantId = '') {
         $this->synergyApi = new SynergyAPI($resellerId, $apiKey);
         $this->whmcsDB = new WhmcsLocalDb();

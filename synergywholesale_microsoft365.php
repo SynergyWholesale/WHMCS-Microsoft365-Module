@@ -1,7 +1,10 @@
 <?php
 use WHMCS\Database\Capsule as DB;
-require_once 'models/Subscription.php';
-require_once 'models/Tenant.php';
+
+use WHMCS\Microsoft365\Models\Tenant;
+use WHMCS\Microsoft365\Models\SynergyAPI;
+use WHMCS\Microsoft365\Models\Subscription;
+use WHMCS\Microsoft365\Models\WhmcsLocalDb as LocalDB;
 
 function synergywholesale_microsoft365_ConfigOptions()
 {
