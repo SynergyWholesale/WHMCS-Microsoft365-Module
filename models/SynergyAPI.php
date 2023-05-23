@@ -1,12 +1,12 @@
 <?php
-
-use WHMCS\Database\Capsule as DB;
+namespace WHMCS\Microsoft365\Models;
 
 class SynergyAPI {
 
     const API_ENDPOINT = 'https://api.synergywholesale.test/?wsdl';
     const MODULE_NAME = 'synergywholesale_microsoft365';
     const SWS_TENANT_TARGET = 'tblTenants';
+    const SWS_SUBSCRIPTION_TARGET = 'tblSubscriptions';
     private $client;
     private $resellerId;
     private $apiKey;
@@ -50,14 +50,14 @@ class SynergyAPI {
      * @param $data (body request of the API call)
      * @return array|mixed|string
      */
-    private function sendRequest($action, $data)
+    private function sendRequest($action, $request)
     {
         try {
-            $response = $this->client->{$action}($data);
+            $response = $this->client->{$action}($request);
             $logResponse = is_string($response) ? $response : (array) $response;
-            logModuleCall(self::MODULE_NAME, $action, $data, $logResponse, $logResponse, $this->auth);
+            logModuleCall(self::MODULE_NAME, $action, $request, $logResponse, $logResponse, $this->auth);
         } catch (SoapFault $e) {
-            logModuleCall(self::MODULE_NAME, $action, $data, $e->getMessage(), $e->getMessage(), $this->auth);
+            logModuleCall(self::MODULE_NAME, $action, $request, $e->getMessage(), $e->getMessage(), $this->auth);
 
             return [
                 'error' => $e->getMessage(),
@@ -88,11 +88,11 @@ class SynergyAPI {
         }
 
         // Prepare data for sending request
-        $data = array_merge([
+        $request = array_merge([
             'identifier' => $id,
         ], $this->auth);
 
-        return $this->sendRequest($action, $data);
+        return $this->sendRequest($action, $request);
     }
 
     /**
@@ -100,7 +100,7 @@ class SynergyAPI {
      * @param $action
      * @return mixed
      */
-    public function getAll($action, $tenantId = null)
+    public function getAll($target, $action, $referenceId = null)
     {
         if (empty($action)) {
             return [
@@ -108,7 +108,26 @@ class SynergyAPI {
             ];
         }
 
-        return $this->sendRequest($action, $this->auth);
+        // If we pass through an ID, it means we want to get the full list of subscriptions belong to a tenant
+        switch($target) {
+            case self::SWS_SUBSCRIPTION_TARGET:
+                if (!$referenceId){
+                    return [
+                        'error' => 'The required tenant ID field is empty',
+                    ];
+                }
+
+                $request = array_merge([
+                    'identifier' => $referenceId,
+                ], $this->auth);
+                break;
+            case self::SWS_TENANT_TARGET:
+            default:
+                $request = $this->auth;
+                break;
+        }
+
+        return $this->sendRequest($action, $request);
     }
 
     /**
@@ -120,6 +139,21 @@ class SynergyAPI {
     public function getByConditions($action, $conditions)
     {
         return $this->sendRequest($action, array_merge($conditions, $this->auth));
+    }
+
+    public function create($action, $request)
+    {
+
+    }
+
+    public function update($action, $request)
+    {
+
+    }
+
+    public function delete($action, $id)
+    {
+
     }
 }
 ?>
