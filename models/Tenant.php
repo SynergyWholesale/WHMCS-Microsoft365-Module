@@ -2,22 +2,15 @@
 namespace WHMCS\Microsoft365\Models;
 
 class Tenant {
-    const API_ENDPOINT = 'https://api.synergywholesale.test/?wsdl';
     const SWS_TENANT_TARGET = 'tblTenants';
-    const WHMCS_TENANT_TABLE = 'tbltenants';
+    const WHMCS_TENANT_TABLE = 'tblclients';
     private $synergyApi;
     private $whmcsDB;
     private $swsApiInstant;
     private $whmcsInstant;
 
-    const TABLE_COLUMNS = [
-        'client_id',
-        'id',
-        'remote_sws_id',
-        'domain_prefix',
-    ];
-
-    public function __construct($resellerId, $apiKey, $tenantId = '') {
+    public function __construct($resellerId, $apiKey, $tenantId = '')
+    {
         $this->synergyApi = new SynergyAPI($resellerId, $apiKey);
         $this->whmcsDB = new WhmcsLocalDb();
 
@@ -30,6 +23,18 @@ class Tenant {
                 ? $this->synergyApi->getById('subscriptionGetClient', $this->whmcsInstant->remote_sws_id)
                 : $this->synergyApi->getAll(self::SWS_TENANT_TARGET, 'subscriptionListClients');
         }
+    }
+
+    // Create, Update, Delete Operations on subscriptions (We already have GET from the construct)
+    public function crudActions($action, $data)
+    {
+
+    }
+
+    // Enable and Disable a tenant's management on subscriptions
+    public function toggleTenantManagement()
+    {
+
     }
 }
 

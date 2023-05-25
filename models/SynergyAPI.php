@@ -5,8 +5,6 @@ class SynergyAPI {
 
     const API_ENDPOINT = 'https://api.synergywholesale.test/?wsdl';
     const MODULE_NAME = 'synergywholesale_microsoft365';
-    const SWS_TENANT_TARGET = 'tblTenants';
-    const SWS_SUBSCRIPTION_TARGET = 'tblSubscriptions';
     private $client;
     private $resellerId;
     private $apiKey;
@@ -110,7 +108,7 @@ class SynergyAPI {
 
         // If we pass through an ID, it means we want to get the full list of subscriptions belong to a tenant
         switch($target) {
-            case self::SWS_SUBSCRIPTION_TARGET:
+            case Subscription::SWS_SUBSCRIPTION_TARGET:
                 if (!$referenceId){
                     return [
                         'error' => 'The required tenant ID field is empty',
@@ -121,7 +119,7 @@ class SynergyAPI {
                     'identifier' => $referenceId,
                 ], $this->auth);
                 break;
-            case self::SWS_TENANT_TARGET:
+            case Tenant::SWS_TENANT_TARGET:
             default:
                 $request = $this->auth;
                 break;
@@ -136,24 +134,22 @@ class SynergyAPI {
      * @param $conditions
      * @return array|mixed|string
      */
-    public function getByConditions($target, $action, $conditions)
+    public function getByConditions($action, $conditions)
     {
         return $this->sendRequest($action, array_merge($conditions, $this->auth));
     }
 
-    public function create($target, $action, $request)
+    public function provisioningActions($action, $id)
     {
-
+        $request = array_merge([
+            'identifier' => $id,
+        ], $this->auth);
+        return $this->sendRequest($action, $request);
     }
 
-    public function update($target, $action, $id, $request)
+    public function createNewRecord($action, $data)
     {
-
-    }
-
-    public function delete($target, $action, $id)
-    {
-
+        return $this->sendRequest($action, $data);
     }
 }
 ?>
