@@ -49,11 +49,11 @@ class WhmcsLocalDb {
         return DB::table($target)->where('id', $id)->delete();
     }
 
-    public function getSubscriptionsForCreate($serviceId)
+    public function getSubscriptionsForAction($serviceId, $action)
     {
-        $subscriptionOrder = [];
+        $return = [];
         $configOptions = DB::table('tblhostingconfigoptions')
-            ->join('tblproductconfigoptions', 'tblhostingconfigoptions.', '=', 'tblproductconfigoptions.id')
+            ->join('tblproductconfigoptions', 'tblhostingconfigoptions.configid', '=', 'tblproductconfigoptions.id')
             ->select(['tblproductconfigoptions.optionname', 'tblhostingconfigoptions.*'])
             ->where('tblhostingconfigoptions.relid', '=', $serviceId)
             ->get();
@@ -61,17 +61,42 @@ class WhmcsLocalDb {
         if ($configOptions) {
             foreach ($configOptions as $row)
             {
-                if (strpos($row->optionname, '|') && $row->qty > 0) {
+                if (strpos($row->optionname, '|') && $row->qty >= 0) {
                     $productId = explode('|', $row->optionname)[0];
 
-                    $subscriptionOrder[] = [
-                        'productId' => $productId,
-                        'quantity' => $row->qty,
-                    ];
+                    switch ($action) {
+                        case 'changePlan':
+                            $customFieldsNeeded = $this->getProductAndServiceCustomFields($productId, $serviceId);
+
+                            // Remote subscriptions value is formatted as "productId|subscriptionId, productId|subscriptionId"
+                            foreach (explode(', ', $customFieldsNeeded['Remote Subscriptions']['value']) as $eachSubscription) {
+                                $subscriptionId = explode('|', $eachSubscription)[1];
+
+                                // Then we add each subscription record into $return array
+                                $return[$productId] = [
+                                    'subscriptionId' => $subscriptionId,
+                                    'quantity' => $row->qty,
+                                ];
+                            }
+                            break;
+                        case 'create':
+                        default:
+                            // If this option has 0 quantity, that means user didn't order it, just skip it
+                            if ($row->qty == 0) {
+                                break;
+                            }
+
+                            // Otherwise if it's greater than 0, we add it to order
+                            $return[] = [
+                                'productId' => $productId,
+                                'quantity' => $row->qty,
+                            ];
+                            break;
+                    }
                 }
             }
         }
-        return $subscriptionOrder;
+        return $return;
     }
 
     public function getProductAndServiceCustomFields($productId, $serviceId, $remoteOnly = true)
@@ -117,6 +142,19 @@ class WhmcsLocalDb {
             ];
         }
 
+        if ($remoteOnly) {
+            // Only take records of ['Remote Tenant ID', 'Domain Prefix', 'Remote Subscriptions', 'Customer Agreement']
+            return array_filter($return, function ($each) {
+                foreach ($each as $name => $value) {
+                    if (in_array($name, ['Remote Tenant ID', 'Domain Prefix', 'Remote Subscriptions', 'Customer Agreement'])) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+
+        // Retrieve all custom fields
         return $return;
     }
 

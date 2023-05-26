@@ -4,14 +4,16 @@ use WHMCS\Database\Capsule as DB;
 use WHMCS\Microsoft365\Models\SynergyAPI;
 use WHMCS\Microsoft365\Models\WhmcsLocalDb as LocalDB;
 
-const OK_PROVISION = '[OK] Successfully provisioned new service.';
-const TENANT_EXISTED = 'This tenant has already been created.';
-const OK_SUSPEND = '[OK] Successfully suspended service.';
-const OK_UNSUSPEND = '[OK] Successfully unsuspended service.';
-const OK_TERMINATE = '[OK] Successfully unsuspended service.';
-const FAILED_SUSPEND_LIST = 'Failed to suspend the following subscriptions: ';
-const FAILED_UNSUSPEND_LIST = 'Failed to unsuspend the following subscriptions: ';
-const FAILED_TERMINATE_LIST = 'Failed to unsuspend the following subscriptions: ';
+const OK_PROVISION = '[SUCCESS] Successfully provisioned new service.';
+const TENANT_EXISTED = '[FAILED] This tenant has already been created.';
+const OK_SUSPEND = '[SUCCESS] Successfully suspended service.';
+const OK_UNSUSPEND = '[SUCCESS] Successfully unsuspended service.';
+const OK_TERMINATE = '[SUCCESS] Successfully unsuspended service.';
+const OK_CHANGE_PLAN = '[SUCCESS] Successfully changed plan for service.';
+const FAILED_SUSPEND_LIST = '[FAILED] Failed to suspend the following subscriptions: ';
+const FAILED_UNSUSPEND_LIST = '[FAILED] Failed to unsuspend the following subscriptions: ';
+const FAILED_TERMINATE_LIST = '[FAILED] Failed to unsuspend the following subscriptions: ';
+const FAILED_CHANGE_PLAN = '[FAILED] Failed to change plan for service.';
 const STATUS_DELETED = 'Deleted';
 const STATUS_CANCELLED = 'Cancelled';
 const STATUS_ACTIVE = 'Active';
@@ -53,6 +55,7 @@ function synergywholesale_microsoft365_ConfigOptions()
     ];
 }
 
+/** Create new tenant and subscriptions in SWS API */
 function synergywholesae_microsoft365_CreateAccount($params)
 {
     // New instance of local WHMCS database and Synergy API
@@ -91,7 +94,7 @@ function synergywholesae_microsoft365_CreateAccount($params)
     // Format and merge array for request
     $newTenantRequest = array_merge($clientDetails, $otherData);
     // Send request to SWS API
-    $newTenantResult = $synergyAPI->createNewRecord('subscriptionCreateClient', $newTenantRequest);
+    $newTenantResult = $synergyAPI->crudOperations('subscriptionCreateClient', $newTenantRequest);
     if ($newTenantResult['error'] || !$newTenantResult['identifier']) {
         return $this->synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
     }
@@ -102,7 +105,7 @@ function synergywholesae_microsoft365_CreateAccount($params)
     $tenantId = $newTenantResult['identifier'];
 
     // Get and organise subscriptionOrder request for SWS API
-    $subscriptionOrder = $whmcsLocalDb->getSubscriptionsForCreate($params['serviceid']);
+    $subscriptionOrder = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'create');
     if (empty($subscriptionOrder)) {
         return $this->synergywholesale_microsoft365_formatStatusAndMessage(['error' => 'Unable to create subscription account due to invalid configuration.']);
     }
@@ -110,9 +113,9 @@ function synergywholesae_microsoft365_CreateAccount($params)
     //Format and merge array for request
     $newSubscriptionsRequest = array_merge($subscriptionOrder, ['identifier' => $tenantId]);
     // Send request to SWS API
-    $newSubscriptionsResult = $synergyAPI->createNewRecord('subscriptionPurchase', $newSubscriptionsRequest);
+    $newSubscriptionsResult = $synergyAPI->crudOperations('subscriptionPurchase', $newSubscriptionsRequest);
     if ($newSubscriptionsResult['error'] || !$newSubscriptionsResult['subscriptionList']) {
-        return $this->synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
+        return $this->synergywholesale_microsoft365_formatStatusAndMessage($newSubscriptionsResult);
     }
 
     /**
@@ -128,6 +131,7 @@ function synergywholesae_microsoft365_CreateAccount($params)
     foreach ($newSubscriptionsResult as $eachSubscription) {
         $remoteSubscriptionData[] = "{$eachSubscription['productId']}|{$eachSubscription['subscriptionId']}";
     }
+
     // If current subscription data is empty, then we insert
     if (empty($customFields['Remote Subscriptions']['value'])) {
         $whmcsLocalDb->createNewCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
@@ -140,6 +144,7 @@ function synergywholesae_microsoft365_CreateAccount($params)
     return OK_PROVISION;
 }
 
+/** Suspend service and subscriptions in SWS API */
 function synergywholesale_microsoft365_SuspendAccount($params)
 {
     // New instance of local WHMCS database and Synergy API
@@ -161,21 +166,10 @@ function synergywholesale_microsoft365_SuspendAccount($params)
             // Check if subscription is currently in Active or Pending, if NOT, then skip it
             $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $subscriptionId);
 
-            // Message if subscription is already terminated
-            if (in_array($thisSubscription['subscriptionStatus'], TERMINATED_STATUS)) {
-                $error[] = "[{$subscriptionId}] Subscription already terminated.";
-                continue;
-            }
-
-            // Message if subscription is already suspended
-            if (in_array($thisSubscription['subscriptionStatus'], SUSPENDED_STATUS)) {
-                $error[] = "[{$subscriptionId}] Subscription already suspended.";
-                continue;
-            }
-
-            // Message for other unrecognised statuses
-            if (!in_array($thisSubscription['subscriptionStatus'], ACTIVE_STATUS)) {
-                $error[] = "[{$subscriptionId}] Subscription not in active status.";
+            // Validate if current service status is valid for suspend, if error exists then we skip it
+            $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Suspend', $thisSubscription['domainStatus'], $subscriptionId);
+            if ($validateResult) {
+                $error[] = $validateResult;
                 continue;
             }
 
@@ -184,7 +178,7 @@ function synergywholesale_microsoft365_SuspendAccount($params)
             //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
             // This means the API request wasn't successful, add this ID to $error array for displaying message
-            if (!strpos($formattedMessage, 'OK') || !strpos($formattedMessage, 'AVAILABLE')) {
+            if (!strpos($formattedMessage, '[SUCCESS]')) {
                 $error[] = "[{$subscriptionId}] Suspend Request Failed";
             }
         }
@@ -196,11 +190,12 @@ function synergywholesale_microsoft365_SuspendAccount($params)
     }
 
     // Update service status in local WHMCS
-    $whmcsLocalDb->update(WHMCS_HOSTING_TABLE, $params['serviceid'], ['domainstatus' => INACTIVE_STATUS[0]]);
+    $whmcsLocalDb->update(WHMCS_HOSTING_TABLE, $params['serviceid'], ['domainstatus' => STATUS_SUSPENDED]);
 
     return OK_SUSPEND;
 }
 
+/** Unsuspend service and subscriptions in SWS API */
 function synergywholesale_microsoft365_UnsuspendAccount($params)
 {
     // New instance of local WHMCS database and Synergy API
@@ -224,21 +219,10 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
             // We only unsuspend if it is suspended
             $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $subscriptionId);
 
-            // Message if subscription is already active or pending
-            if (in_array($thisSubscription['subscriptionStatus'], ACTIVE_STATUS)) {
-                $error[] = "[{$subscriptionId}] Subscription already active.";
-                continue;
-            }
-
-            // Message if subscription is already terminated
-            if (in_array($thisSubscription['subscriptionStatus'], TERMINATED_STATUS)) {
-                $error[] = "[{$subscriptionId}] Subscription already terminated.";
-                continue;
-            }
-
-            // Message for other unrecognised statuses
-            if (!in_array($thisSubscription['subscriptionStatus'], SUSPENDED_STATUS)) {
-                $error[] = "[{$subscriptionId}] Subscription not in suspended status.";
+            // Validate if current service status is valid for unsuspend, if error exists then we skip it
+            $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Suspend', $thisSubscription['domainStatus'], $subscriptionId);
+            if ($validateResult) {
+                $error[] = $validateResult;
                 continue;
             }
 
@@ -247,7 +231,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
             //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
             // This means the API request wasn't successful, add this ID to $error array for displaying message
-            if (!strpos($formattedMessage, 'OK') || !strpos($formattedMessage, 'AVAILABLE')) {
+            if (!strpos($formattedMessage, '[SUCCESS]')) {
                 $error[] = "[{$subscriptionId}] Unsuspend Request Failed";
             }
         }
@@ -264,6 +248,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
     return OK_UNSUSPEND;
 }
 
+/** Terminate service and subscriptions in SWS API */
 function synergywholesale_microsoft365_TerminateAccount($params)
 {
     // New instance of local WHMCS database and Synergy API
@@ -286,9 +271,10 @@ function synergywholesale_microsoft365_TerminateAccount($params)
             // If it is currently  active stage or suspended stage, then we terminate
             $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $subscriptionId);
 
-            // Message if subscription is already terminated
-            if (in_array($thisSubscription['subscriptionStatus'], TERMINATED_STATUS)) {
-                $error[] = "[{$subscriptionId}] Subscription already terminated.";
+            // Validate if current service status is valid for unsuspend, if error exists then we skip it
+            $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Suspend', $thisSubscription['domainStatus'], $subscriptionId);
+            if ($validateResult) {
+                $error[] = $validateResult;
                 continue;
             }
 
@@ -297,7 +283,7 @@ function synergywholesale_microsoft365_TerminateAccount($params)
             //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
             // This means the API request wasn't successful, add this ID to $error array for displaying message
-            if (!strpos($formattedMessage, 'OK') || !strpos($formattedMessage, 'AVAILABLE')) {
+            if (!strpos($formattedMessage, '[SUCCESS]')) {
                 $error[] = "[{$subscriptionId}] Terminate Request Failed";
             }
         }
@@ -315,11 +301,181 @@ function synergywholesale_microsoft365_TerminateAccount($params)
 
 }
 
-function synergywholesale_microsoft365_ChangePassword()
+/** Perform change plan (subscriptions and quantities) for this tenant (service) */
+function synergywholesale_microsoft365_ChangePlan($params)
+{
+    // New instance of local WHMCS database and Synergy API
+    $whmcsLocalDb = new LocalDB();
+    $synergyAPI = new SynergyAPI(['configoption1'], $params['configoption2']);
+
+    // TODO: May need to retrieve current values from SWS API and compare with new records to generate log message
+
+    // Get existing subscriptions (custom fields) and overall subscriptions (config options) from local WHMCS DB
+    $existingSubscriptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'changePlan');
+    $overallSubscriptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'create');
+
+    $subscriptionsToCreate = [];
+
+    $error = [];
+    foreach ($overallSubscriptions as $row) {
+        $productId = $row['productId'];
+
+        /** If this config option doesn't exist in custom fields, that means this subscription hasn't been created in Synergy */
+        if (!empty($existingSubscriptions[$productId])) {
+            // If quantity = 0, that means user doesn't want to create new subscription for this config option, we can just skip it
+            if ($row['quantity'] == 0) {
+                continue;
+            }
+
+            // If quantity is negative, we return error
+            if ($row['quantity'] < 0) {
+                $error[] = "[{$productId}] Invalid quantity provided";
+                continue;
+            }
+
+            // Otherwise, we add this config option to an array to purchase at the end
+            $subscriptionsToCreate[] = $row;
+            continue;
+        }
+
+        /** Otherwise if this config option exists in custom fields, that mean this subscription already provisioned in Synergy, now we check 'quantity' to see if we need to terminate or update quantity for this subscription */
+        $existingSubscriptionId = $existingSubscriptions['subscriptionId'];
+        // Get current details of subscription from Synergy API
+        $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $existingSubscriptionId);
+        // If quantity = 0, that means user wants to terminate this subscription
+        if ($row['quantity'] == 0) {
+            // Validate if this subscription status is valid for termination
+            $validateStatus = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Terminate', $thisSubscription['domainStatus'], $existingSubscriptionId);
+
+            // If error status exists, we add it to error logs
+            if ($validateStatus) {
+                $error[] = $validateStatus;
+                continue;
+            }
+
+            // If error status is NULL, then we terminate this subscription
+            $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($synergyAPI->provisioningActions('subscriptionTerminate', $existingSubscriptionId));
+
+            // This means the API request wasn't successful, add this ID to $error array for displaying message
+            if (!strpos($formattedMessage, '[SUCCESS]')) {
+                $error[] = "[{$existingSubscriptionId}] Terminate Request Failed";
+            }
+            continue;
+        }
+
+        // If quantity is negative, we return error
+        if ($row['quantity'] < 0) {
+            $error[] = "[{$existingSubscriptionId}] Invalid quantity provided";
+            continue;
+        }
+
+        // Otherwise we perform update quantity for this subscription
+        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($synergyAPI->crudOperations('subscriptionUpdateQuantity', [
+            'identifier' => $existingSubscriptionId,
+            'quantity' => $row['quantity'],
+        ]));
+
+        // This means the API request wasn't successful, add this ID to $error array for displaying message
+        if (!strpos($formattedMessage, '[SUCCESS]')) {
+            $error[] = "[{$existingSubscriptionId}] Update Quantity Request Failed";
+        }
+    }
+
+    /** Now we want to check if $subscriptionsToCreate not empty, then we purchase subscriptions */
+    if (!empty($subscriptionsToCreate)) {
+        $tenantId = $params['customfields']['Remote Tenant ID'];
+
+        // Send API request to SWS for purchasing new subscription(s)
+        $purchaseResult = $synergyAPI->crudOperations('subscriptionPurchase', array_merge($subscriptionsToCreate, ['identifier' => $tenantId]));
+        if ($purchaseResult['error'] || !$purchaseResult['subscriptionList']) {
+            $error[] = "[FAILED_PURCHASE] {$this->synergywholesale_microsoft365_formatStatusAndMessage($purchaseResult)}";
+        }
+    }
+
+    if (!empty($error)) {
+        return FAILED_CHANGE_PLAN . ' Error: ' . implode(', ', $error);
+    }
+
+    return OK_CHANGE_PLAN;
+
+}
+
+/** Perform sync data from SWS API to WHMCS */
+function synergywholesale_microsoft365_Sync($params)
 {
 
 }
 
+/** Define module buttons available for admin */
+function synergywholesale_micrsoft365_AdminCustomButtonArray()
+{
+    return [
+        'Change Plan' => 'ChangePlan',
+        'Sync Data' => 'Sync',
+    ];
+}
+
+function synergywholesale_microsoft365_metaData()
+{
+    return [
+        'DisplayName' => 'Synergy Wholesale Hosting',
+    ];
+}
+
+/**
+ * CUSTOM FUNCTIONS FOR USING INTERNALLY
+ */
+
+/** Validate subscription status for provisioning actions */
+function synergywholesale_microsoft365_getSubscriptionStatusInvalid($action, $status, $subscriptionId)
+{
+    switch ($action) {
+        case 'Suspend':
+            // Message if subscription is already terminated
+            if (in_array($status, TERMINATED_STATUS)) {
+                return "[{$subscriptionId}] Subscription already terminated.";
+            }
+
+            // Message if subscription is already suspended
+            if (in_array($status, SUSPENDED_STATUS)) {
+                return "[{$subscriptionId}] Subscription already suspended.";
+            }
+
+            // Message for other unrecognised statuses
+            if (!in_array($status, ACTIVE_STATUS)) {
+                return "[{$subscriptionId}] Subscription not in active status.";
+            }
+            break;
+        case 'Unsuspend':
+            // Message if subscription is already active or pending
+            if (in_array($status, ACTIVE_STATUS)) {
+                return "[{$subscriptionId}] Subscription already active.";
+            }
+
+            // Message if subscription is already terminated
+            if (in_array($status, TERMINATED_STATUS)) {
+                return "[{$subscriptionId}] Subscription already terminated.";
+            }
+
+            // Message for other unrecognised statuses
+            if (!in_array($status, SUSPENDED_STATUS)) {
+                return "[{$subscriptionId}] Subscription not in suspended status.";
+            }
+            break;
+        case 'Terminate':
+            // Message if subscription is already terminated
+            if (in_array($status, TERMINATED_STATUS)) {
+                return "[{$subscriptionId}] Subscription already terminated.";
+            }
+            break;
+        default:
+            return "[{$subscriptionId}] Unable to validate service status.";
+    }
+
+    return null;
+}
+
+/** Accept response from API calls and format it for display message */
 function synergywholesale_microsoft365_formatStatusAndMessage($apiResult)
 {
     if (is_null($apiResult)) {
@@ -328,15 +484,8 @@ function synergywholesale_microsoft365_formatStatusAndMessage($apiResult)
 
     // If 'error' is set, that means the API failed to send request or the action was not successful in SWS API
     // If not, that means the process was successful and we return code 'OK' along with the message (SWS API set it as 'errorMessage' even if sucessful)
-    return $apiResult['error'] ?? "[{$apiResult->status}] {$apiResult->errorMessage}.";
+    return $apiResult['error'] ?? "[SUCCESS] {$apiResult->errorMessage}.";
 
-}
-
-function synergywholesale_microsoft365_metaData()
-{
-    return [
-        'DisplayName' => 'Synergy Wholesale Hosting',
-    ];
 }
 
 ?>

@@ -147,8 +147,9 @@ class SynergyAPI {
         return $this->sendRequest($action, $request);
     }
 
-    public function createNewRecord($action, $data)
+    public function crudOperations($action, $data)
     {
+        $data = array_merge($data, $this->auth);
         return $this->sendRequest($action, $data);
     }
 }
