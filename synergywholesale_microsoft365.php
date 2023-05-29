@@ -6,6 +6,7 @@ use WHMCS\Microsoft365\Models\WhmcsLocalDb as LocalDB;
 
 const OK_PROVISION = '[SUCCESS] Successfully provisioned new service.';
 const TENANT_EXISTED = '[FAILED] This tenant has already been created.';
+const OK_CREATE_TENANT = '[SUCCESS] Successfully created new tenant.';
 const OK_SUSPEND = '[SUCCESS] Successfully suspended service.';
 const OK_UNSUSPEND = '[SUCCESS] Successfully unsuspended service.';
 const OK_TERMINATE = '[SUCCESS] Successfully unsuspended service.';
@@ -98,6 +99,8 @@ function synergywholesae_microsoft365_CreateAccount($params)
     if ($newTenantResult['error'] || !$newTenantResult['identifier']) {
         return $this->synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
     }
+    // Insert new values of Remote Tenant ID, Domain Prefix into custom fields
+    $whmcsLocalDb->createNewCustomFieldValues($customFields['Remote Tenant ID']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
 
     /**
      * START CREATE NEW SUBSCRIPTION IN SYNERGY
@@ -110,6 +113,17 @@ function synergywholesae_microsoft365_CreateAccount($params)
         return $this->synergywholesale_microsoft365_formatStatusAndMessage(['error' => 'Unable to create subscription account due to invalid configuration.']);
     }
 
+    // Check if all the quantities of config options are 0, that mean user has just placed the order, so we only want to create the tenant, not subscriptions
+    $purchasableOrder = [];
+    foreach ($subscriptionOrder as $order) {
+        if ($order['quantity'] != 0) {
+            $purchasableOrder[] = $order;
+        }
+    }
+    if (empty($purchasableOrder)) {
+        return OK_CREATE_TENANT;
+    }
+
     //Format and merge array for request
     $newSubscriptionsRequest = array_merge($subscriptionOrder, ['identifier' => $tenantId]);
     // Send request to SWS API
@@ -119,11 +133,8 @@ function synergywholesae_microsoft365_CreateAccount($params)
     }
 
     /**
-     * INSERT OR UPDATE NEW REMOTE VALUES TO LOCAL WHMCS DATABASE (Remote Tenant ID, Domain Prefix, Remote Subscriptions)
+     * INSERT OR UPDATE NEW REMOTE VALUES TO LOCAL WHMCS DATABASE (Remote Subscriptions)
      */
-    // Insert new values of Remote Tenant ID, Domain Prefix into custom fields
-    $whmcsLocalDb->createNewCustomFieldValues($customFields['Remote Tenant ID']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
-
     $whmcsLocalDb->createNewCustomFieldValues($customFields['Domain Prefix']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
 
     // Generate data for saving new subscriptions ID as format "productId|subscriptionId"
