@@ -4,6 +4,7 @@ use WHMCS\Database\Capsule as DB;
 use WHMCS\Microsoft365\Models\SynergyAPI;
 use WHMCS\Microsoft365\Models\WhmcsLocalDb as LocalDB;
 
+const MODULE_NAME = 'synergywholesale_microsoft365';
 const OK_PROVISION = '[SUCCESS] Successfully provisioned new service.';
 const TENANT_EXISTED = '[FAILED] This tenant has already been created.';
 const OK_CREATE_TENANT = '[SUCCESS] Successfully created new tenant.';
@@ -15,6 +16,7 @@ const FAILED_SUSPEND_LIST = '[FAILED] Failed to suspend the following subscripti
 const FAILED_UNSUSPEND_LIST = '[FAILED] Failed to unsuspend the following subscriptions: ';
 const FAILED_TERMINATE_LIST = '[FAILED] Failed to unsuspend the following subscriptions: ';
 const FAILED_CHANGE_PLAN = '[FAILED] Failed to change plan for service.';
+const FAILED_INVALID_CONFIGURATION = '[FAILED] Unable to create subscription account due to invalid configuration.';
 const STATUS_DELETED = 'Deleted';
 const STATUS_CANCELLED = 'Cancelled';
 const STATUS_ACTIVE = 'Active';
@@ -76,9 +78,17 @@ function synergywholesae_microsoft365_CreateAccount($params)
      * VALIDATE IF THIS TENANT HAS BEEN CREATED IN SYNERGY
      */
 
+    /** logModuleCall($module, $action, $requestString, $responseData, $processedData, $replaceVars); */
     if (!empty($customFields['Remote Tenant ID']['value'])) {
         $remoteTenant = $synergyAPI->getById('subscriptionGetClient', $customFields['Remote Tenant ID']['value']);
+
         if ($remoteTenant) {
+            // Logs for error
+            logModuleCall(MODULE_NAME, 'CreateAccount', $customFields['Remote Tenant ID']['value'], [
+                'status' => $remoteTenant['status'],
+                'message' => $remoteTenant['errorMessage'],
+            ], TENANT_EXISTED);
+
             return TENANT_EXISTED;
         }
     }
@@ -96,11 +106,27 @@ function synergywholesae_microsoft365_CreateAccount($params)
     $newTenantRequest = array_merge($clientDetails, $otherData);
     // Send request to SWS API
     $newTenantResult = $synergyAPI->crudOperations('subscriptionCreateClient', $newTenantRequest);
+
+    $formatted = $this->synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
     if ($newTenantResult['error'] || !$newTenantResult['identifier']) {
-        return $this->synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
+
+        // Logs for error
+        logModuleCall(MODULE_NAME, 'CreateAccount', $newTenantRequest, [
+            'status' => $newTenantResult['status'],
+            'error' => $newTenantResult['error'],
+        ], $formatted);
+
+        return $formatted;
     }
     // Insert new values of Remote Tenant ID, Domain Prefix into custom fields
     $whmcsLocalDb->createNewCustomFieldValues($customFields['Remote Tenant ID']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
+    $whmcsLocalDb->createNewCustomFieldValues($customFields['Domain Prefix']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
+
+    // Logs for successful
+    logModuleCall(MODULE_NAME, 'CreateAccount', $newTenantRequest, [
+        'status' => $newTenantResult['status'],
+        'message' => $newTenantResult['errorMessage'],
+    ], $formatted);
 
     /**
      * START CREATE NEW SUBSCRIPTION IN SYNERGY
@@ -110,7 +136,12 @@ function synergywholesae_microsoft365_CreateAccount($params)
     // Get and organise subscriptionOrder request for SWS API
     $subscriptionOrder = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'create');
     if (empty($subscriptionOrder)) {
-        return $this->synergywholesale_microsoft365_formatStatusAndMessage(['error' => 'Unable to create subscription account due to invalid configuration.']);
+        $formatted = $this->synergywholesale_microsoft365_formatStatusAndMessage(['error' => FAILED_INVALID_CONFIGURATION]);
+
+        // Logs for error
+        logModuleCall(MODULE_NAME, 'CreateAccount', ['serviceId' => $params['serviceid']], ['error' => FAILED_INVALID_CONFIGURATION], $formatted);
+
+        return $formatted;
     }
 
     // Check if all the quantities of config options are 0, that mean user has just placed the order, so we only want to create the tenant, not subscriptions
@@ -128,14 +159,21 @@ function synergywholesae_microsoft365_CreateAccount($params)
     $newSubscriptionsRequest = array_merge($subscriptionOrder, ['identifier' => $tenantId]);
     // Send request to SWS API
     $newSubscriptionsResult = $synergyAPI->crudOperations('subscriptionPurchase', $newSubscriptionsRequest);
+
+    $formatted = $this->synergywholesale_microsoft365_formatStatusAndMessage($newSubscriptionsResult);
     if ($newSubscriptionsResult['error'] || !$newSubscriptionsResult['subscriptionList']) {
-        return $this->synergywholesale_microsoft365_formatStatusAndMessage($newSubscriptionsResult);
+        // Logs for error
+        logModuleCall(MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
+            'status' => $newSubscriptionsResult['status'],
+            'error' => $newSubscriptionsResult['error'],
+        ], $formatted);
+
+        return $formatted;
     }
 
     /**
      * INSERT OR UPDATE NEW REMOTE VALUES TO LOCAL WHMCS DATABASE (Remote Subscriptions)
      */
-    $whmcsLocalDb->createNewCustomFieldValues($customFields['Domain Prefix']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
 
     // Generate data for saving new subscriptions ID as format "productId|subscriptionId"
     $remoteSubscriptionData = [];
@@ -147,10 +185,22 @@ function synergywholesae_microsoft365_CreateAccount($params)
     if (empty($customFields['Remote Subscriptions']['value'])) {
         $whmcsLocalDb->createNewCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
 
+        // Logs for successful
+        logModuleCall(MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
+            'status' => $newSubscriptionsResult['status'],
+            'message' => $newSubscriptionsResult['errorMessage'],
+        ], $formatted);
+
         return OK_PROVISION;
     }
 
     $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
+
+    // Logs for successful
+    logModuleCall(MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
+        'status' => $newSubscriptionsResult['status'],
+        'message' => $newSubscriptionsResult['errorMessage'],
+    ], $formatted);
 
     return OK_PROVISION;
 }
@@ -510,7 +560,7 @@ function synergywholesale_microsoft365_formatStatusAndMessage($apiResult)
     }
 
     // If 'error' is set, that means the API failed to send request or the action was not successful in SWS API
-    // If not, that means the process was successful and we return code 'OK' along with the message (SWS API set it as 'errorMessage' even if sucessful)
+    // If not, that means the process was successful and we return code 'OK' along with the message (SWS API set it as 'errorMessage' even if successful)
     return $apiResult['error'] ?? "[SUCCESS] {$apiResult->errorMessage}.";
 
 }

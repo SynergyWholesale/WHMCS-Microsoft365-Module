@@ -58,12 +58,14 @@ class SynergyAPI {
             logModuleCall(self::MODULE_NAME, $action, $request, $e->getMessage(), $e->getMessage(), $this->auth);
 
             return [
+                'status' => $e->getCode(),
                 'error' => $e->getMessage(),
             ];
         }
 
         if (!preg_match('/^(OK|AVAILABLE).*?/', $response->status)) {
             return [
+                'status' => $response->status,
                 'error' => $response->errorMessage,
             ];
         }
