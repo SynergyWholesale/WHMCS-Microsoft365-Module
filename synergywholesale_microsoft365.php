@@ -107,7 +107,7 @@ function synergywholesae_microsoft365_CreateAccount($params)
     // Send request to SWS API
     $newTenantResult = $synergyAPI->crudOperations('subscriptionCreateClient', $newTenantRequest);
 
-    $formatted = $this->synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
+    $formatted = synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
     if ($newTenantResult['error'] || !$newTenantResult['identifier']) {
 
         // Logs for error
@@ -120,7 +120,7 @@ function synergywholesae_microsoft365_CreateAccount($params)
     }
     // Insert new values of Remote Tenant ID, Domain Prefix into custom fields
     $whmcsLocalDb->createNewCustomFieldValues($customFields['Remote Tenant ID']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
-    $whmcsLocalDb->createNewCustomFieldValues($customFields['Domain Prefix']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
+    $whmcsLocalDb->createNewCustomFieldValues($customFields['Domain Prefix']['fieldId'], $params['serviceid'], $newTenantResult['domainPrefix']);
 
     // Logs for successful
     logModuleCall(MODULE_NAME, 'CreateAccount', $newTenantRequest, [
@@ -136,7 +136,7 @@ function synergywholesae_microsoft365_CreateAccount($params)
     // Get and organise subscriptionOrder request for SWS API
     $subscriptionOrder = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'create');
     if (empty($subscriptionOrder)) {
-        $formatted = $this->synergywholesale_microsoft365_formatStatusAndMessage(['error' => FAILED_INVALID_CONFIGURATION]);
+        $formatted = synergywholesale_microsoft365_formatStatusAndMessage(['error' => FAILED_INVALID_CONFIGURATION]);
 
         // Logs for error
         logModuleCall(MODULE_NAME, 'CreateAccount', ['serviceId' => $params['serviceid']], ['error' => FAILED_INVALID_CONFIGURATION], $formatted);
@@ -160,7 +160,7 @@ function synergywholesae_microsoft365_CreateAccount($params)
     // Send request to SWS API
     $newSubscriptionsResult = $synergyAPI->crudOperations('subscriptionPurchase', $newSubscriptionsRequest);
 
-    $formatted = $this->synergywholesale_microsoft365_formatStatusAndMessage($newSubscriptionsResult);
+    $formatted = synergywholesale_microsoft365_formatStatusAndMessage($newSubscriptionsResult);
     if ($newSubscriptionsResult['error'] || !$newSubscriptionsResult['subscriptionList']) {
         // Logs for error
         logModuleCall(MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
@@ -449,8 +449,8 @@ function synergywholesale_microsoft365_TerminateAccount($params)
 
 }
 
-/** Perform change plan (subscriptions and quantities) for this tenant (service) */
-/** STEPS TO PERFORM CHANGE PLAN (OR CHANGE PACKAGE) ACTION
+/** Perform change plan (subscriptions and quantities) for this tenant (service)
+ * STEPS TO PERFORM CHANGE PLAN (OR CHANGE PACKAGE) ACTION
  * 1. First we want to retrieve all current subscriptions that this service has (from custom fields)
  * 2. Then we want to retrieve new details for config options attached to this service (config options may have quantity as 0)
  * 3. We compare each new config option with the current subscriptions (custom fields) and handle differently as:
@@ -459,7 +459,7 @@ function synergywholesale_microsoft365_TerminateAccount($params)
  *      - If new config option's quantity is 0, AND that config option already has subscriptions under this product, we terminate the subscriptions
  *      - if new config option's quantity is > 0, and that config option already has subscriptions under this product, we perform change plan action
  *      - If new config option's quantity is > 0, AND that config option currently doesn't have any subscriptions, we purchase new subscriptions
- * 4. These logics also work perfectly when use changes package and click change plan module command
+ * 4. These logics also work perfectly when user changes package and click change plan module command
  * @param $params
  * @return string
  */
@@ -478,6 +478,7 @@ function synergywholesale_microsoft365_ChangePlan($params)
     $subscriptionsToCreate = [];
 
     $error = [];
+    $success = [];
     foreach ($overallSubscriptions as $row) {
         $productId = $row['productId'];
 
@@ -490,7 +491,7 @@ function synergywholesale_microsoft365_ChangePlan($params)
 
             // If quantity is negative, we return error
             if ($row['quantity'] < 0) {
-                $error[] = "[{$productId}] Invalid quantity provided";
+                $error[] = " [NEW SUBSCRIPTION] [{$productId}] Invalid quantity provided";
                 continue;
             }
 
@@ -504,6 +505,11 @@ function synergywholesale_microsoft365_ChangePlan($params)
 
         // Get current details of subscription from Synergy API
         $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $existingSubscriptionId);
+        if ($thisSubscription['error'] || !$thisSubscription) {
+            $formatted = synergywholesale_microsoft365_formatStatusAndMessage($thisSubscription);
+            $error[] = "[CURRENT SUBSCRIPTION] [{$existingSubscriptionId}] {$formatted}";
+            continue;
+        }
 
         // If quantity = 0, that means user wants to terminate this subscription
         if ($row['quantity'] == 0) {
@@ -512,7 +518,7 @@ function synergywholesale_microsoft365_ChangePlan($params)
 
             // If error status exists, we add it to error logs
             if ($validateStatus) {
-                $error[] = $validateStatus;
+                $error[] = "[TERMINATE SUBSCRIPTION] {$validateStatus}";
                 continue;
             }
 
@@ -521,8 +527,10 @@ function synergywholesale_microsoft365_ChangePlan($params)
 
             // This means the API request wasn't successful, add this ID to $error array for displaying message
             if (!strpos($formattedMessage, '[SUCCESS]')) {
-                $error[] = "[{$existingSubscriptionId}] Terminate Request Failed";
+                $error[] = "[{$existingSubscriptionId}] {$formattedMessage}";
             }
+
+            $success[] = "[TERMINATE SUBSCRIPTION] [{$existingSubscriptionId}] {$formattedMessage}";
             continue;
         }
 
@@ -540,25 +548,66 @@ function synergywholesale_microsoft365_ChangePlan($params)
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
         if (!strpos($formattedMessage, '[SUCCESS]')) {
-            $error[] = "[{$existingSubscriptionId}] Update Quantity Request Failed";
+            $error[] = "[{$existingSubscriptionId}] {$formattedMessage}";
         }
+
+        $success[] = "[CHANGE QUANTITY SUBSCRIPTION] [{$existingSubscriptionId}] Successfully updated to {$row['quantity']} seat(s).";
     }
 
     /** Now we want to check if $subscriptionsToCreate not empty, then we purchase subscriptions */
     if (!empty($subscriptionsToCreate)) {
         $tenantId = $params['customfields']['Remote Tenant ID'];
 
+        $orderLogMessage = [];
+        foreach ($subscriptionsToCreate as $row) {
+            $orderLogMessage[] = "{$row['productId']}|{$row['quantity']}";
+        }
+
         // Send API request to SWS for purchasing new subscription(s)
         $purchaseResult = $synergyAPI->crudOperations('subscriptionPurchase', array_merge($subscriptionsToCreate, ['identifier' => $tenantId]));
         if ($purchaseResult['error'] || !$purchaseResult['subscriptionList']) {
-            $error[] = "[FAILED_PURCHASE] {$this->synergywholesale_microsoft365_formatStatusAndMessage($purchaseResult)}";
+            $error[] = "[NEW SUBSCRIPTION] " . synergywholesale_microsoft365_formatStatusAndMessage($purchaseResult);
+        } else {
+            $success[] = "[NEW SUBSCRIPTION] " . synergywholesale_microsoft365_formatStatusAndMessage($purchaseResult);
+
+            // Generate data for saving new subscriptions ID as format "productId|subscriptionId"
+            $remoteSubscriptionData = [];
+            foreach ($purchaseResult as $eachSubscription) {
+                $remoteSubscriptionData[] = "{$eachSubscription['productId']}|{$eachSubscription['subscriptionId']}";
+            }
+
+            // Retrieve the custom fields of this service
+            $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
+
+            // If current subscription data is empty, then we insert
+            if (empty($customFields['Remote Subscriptions']['value'])) {
+                $whmcsLocalDb->createNewCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
+            } else {
+                $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
+            }
         }
     }
 
     // If there is error set during the process, we just put them into the response
     if (!empty($error)) {
-        return FAILED_CHANGE_PLAN . ' Error: ' . implode(', ', $error);
+        $returnMessage = FAILED_CHANGE_PLAN . ' Error: ' . implode(', ', $error);
+
+        // Logs for error
+        logModuleCall(MODULE_NAME, 'ChangePlan', [
+            'productId' => $params['pid'],
+            'serviceId' => $params['serviceid'],
+        ], $error, $returnMessage);
+
+        return $returnMessage;
     }
+
+    // Logs for success
+    logModuleCall(MODULE_NAME, 'ChangePlan', [
+        'productId' => $params['pid'],
+        'serviceId' => $params['serviceid'],
+    ], $success, OK_CHANGE_PLAN);
+
+    /** Update new remote subscriptions into WHMCS database */
 
     return OK_CHANGE_PLAN;
 
