@@ -302,6 +302,19 @@ function synergywholesale_microsoft365_TerminateAccount($params)
 }
 
 /** Perform change plan (subscriptions and quantities) for this tenant (service) */
+/** STEPS TO PERFORM CHANGE PLAN (OR CHANGE PACKAGE) ACTION
+ * 1. First we want to retrieve all current subscriptions that this service has (from custom fields)
+ * 2. Then we want to retrieve new details for config options attached to this service (config options may have quantity as 0)
+ * 3. We compare each new config option with the current subscriptions (custom fields) and handle differently as:
+ *      - If new config option's quantity is 0, AND that config option currently doesn't have any subscriptions, we ignore it
+ *      - If all new config option's quantities are 0, that means we terminate all the subscriptions that this tenant currently has
+ *      - If new config option's quantity is 0, AND that config option already has subscriptions under this product, we terminate the subscriptions
+ *      - if new config option's quantity is > 0, and that config option already has subscriptions under this product, we perform change plan action
+ *      - If new config option's quantity is > 0, AND that config option currently doesn't have any subscriptions, we purchase new subscriptions
+ * 4. These logics also work perfectly when use changes package and click change plan module command
+ * @param $params
+ * @return string
+ */
 function synergywholesale_microsoft365_ChangePlan($params)
 {
     // New instance of local WHMCS database and Synergy API
@@ -340,8 +353,10 @@ function synergywholesale_microsoft365_ChangePlan($params)
 
         /** Otherwise if this config option exists in custom fields, that mean this subscription already provisioned in Synergy, now we check 'quantity' to see if we need to terminate or update quantity for this subscription */
         $existingSubscriptionId = $existingSubscriptions['subscriptionId'];
+
         // Get current details of subscription from Synergy API
         $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $existingSubscriptionId);
+
         // If quantity = 0, that means user wants to terminate this subscription
         if ($row['quantity'] == 0) {
             // Validate if this subscription status is valid for termination
@@ -392,6 +407,7 @@ function synergywholesale_microsoft365_ChangePlan($params)
         }
     }
 
+    // If there is error set during the process, we just put them into the response
     if (!empty($error)) {
         return FAILED_CHANGE_PLAN . ' Error: ' . implode(', ', $error);
     }
