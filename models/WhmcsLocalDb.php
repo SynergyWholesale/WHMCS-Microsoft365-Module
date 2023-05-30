@@ -1,5 +1,5 @@
 <?php
-namespace WHMCS\Microsoft365\Models;
+namespace WHMCS\Module\Server\SynergywholesaleMicrosoft365;
 
 use WHMCS\Database\Capsule as DB;
 
@@ -99,7 +99,7 @@ class WhmcsLocalDb {
         return $return;
     }
 
-    public function getProductAndServiceCustomFields($productId, $serviceId, $remoteOnly = true)
+    public function getProductAndServiceCustomFields($productId, $serviceId)
     {
 
         // Select values of custom fields belong to a service
@@ -134,24 +134,10 @@ class WhmcsLocalDb {
                 continue;
             }
 
-            $return[] = [
-                $row->fieldname => [
-                    'fieldId' => $row->id,
-                    'value' => $fieldValues[$row->id] ?? '',
-                ]
+            $return[$row->fieldname] = [
+                'fieldId' => $row->id,
+                'value' => $fieldValues[$row->id] ?? '',
             ];
-        }
-
-        if ($remoteOnly) {
-            // Only take records of ['Remote Tenant ID', 'Domain Prefix', 'Remote Subscriptions', 'Customer Agreement']
-            return array_filter($return, function ($each) {
-                foreach ($each as $name => $value) {
-                    if (in_array($name, ['Remote Tenant ID', 'Domain Prefix', 'Remote Subscriptions', 'Customer Agreement'])) {
-                        return true;
-                    }
-                }
-                return false;
-            });
         }
 
         // Retrieve all custom fields

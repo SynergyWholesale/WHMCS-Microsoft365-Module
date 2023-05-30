@@ -1,8 +1,8 @@
 <?php
 use WHMCS\Database\Capsule as DB;
 
-use WHMCS\Microsoft365\Models\SynergyAPI;
-use WHMCS\Microsoft365\Models\WhmcsLocalDb as LocalDB;
+use WHMCS\Module\Server\SynergywholesaleMicrosoft365\SynergyAPI;
+use WHMCS\Module\Server\SynergywholesaleMicrosoft365\WhmcsLocalDb as LocalDB;
 
 const MODULE_NAME = 'synergywholesale_microsoft365';
 const OK_PROVISION = '[SUCCESS] Successfully provisioned new service.';
@@ -37,6 +37,17 @@ const TERMINATED_STATUS = [
     STATUS_CANCELLED,
 ];
 
+const STATE_MAP = [
+    'Australian Capital Territory' => 'ACT',
+    'New South Wales' => 'NSW',
+    'Northern Territory' => 'NT',
+    'Queensland' => 'QLD',
+    'South Australia' => 'SA',
+    'Tasmania' => 'TAS',
+    'Victoria' => 'VIC',
+    'Western Australia' => 'WA',
+];
+
 // Database tables
 const WHMCS_HOSTING_TABLE = 'tblhosting';
 
@@ -63,26 +74,34 @@ function synergywholesale_microsoft365_CreateAccount($params)
 {
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
-    $synergyAPI = new SynergyAPI(['configoption1'], $params['configoption2']);
+    $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
 
     // Collect tenant's contact details from module params (firstname, lastname,address1,etc...)
     $clientDetails = $params['clientsdetails'];
+
+    // Re-map the details to match with Synergy API validation
+    $clientDetails['state'] = STATE_MAP[$params['clientsdetails']['state']] ?? '';
+    $clientDetails['address'] = $params['clientsdetails']['address1'] ?? '';
+    $clientDetails['phone'] = $params['clientsdetails']['phonenumberformatted'] ?? '';
+    $clientDetails['suburb'] = $params['clientsdetails']['city'] ?? '';
 
     // Get and organise custom fields from DB
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
 
     // Get Client Details
-    $clientObj = $whmcsLocalDb->getById(LocalDB::WHMCS_TENANT_TABLE, $params('userid'));
+    $clientObj = $whmcsLocalDb->getById(LocalDB::WHMCS_TENANT_TABLE, $params['userid']);
 
     /**
      * VALIDATE IF THIS TENANT HAS BEEN CREATED IN SYNERGY
      */
 
-    /** logModuleCall($module, $action, $requestString, $responseData, $processedData, $replaceVars); */
     if (!empty($customFields['Remote Tenant ID']['value'])) {
         $remoteTenant = $synergyAPI->getById('subscriptionGetClient', $customFields['Remote Tenant ID']['value']);
 
         if ($remoteTenant) {
+            // ConvertTo Array
+            $remoteTenant = json_decode(json_encode($remoteTenant), true);
+
             // Logs for error
             logModuleCall(MODULE_NAME, 'CreateAccount', $customFields['Remote Tenant ID']['value'], [
                 'status' => $remoteTenant['status'],
@@ -99,13 +118,15 @@ function synergywholesale_microsoft365_CreateAccount($params)
     $otherData = [
         'password' => $params['password'],
         'description' => $clientObj->description ?? '',
-        'agreement' => $customFields['CustomerAgreement'],
+        'agreement' => !empty($customFields['Customer Agreement']['value']) &&  $customFields['Customer Agreement']['value'] == 'on',
     ];
 
     // Format and merge array for request
     $newTenantRequest = array_merge($clientDetails, $otherData);
     // Send request to SWS API
     $newTenantResult = $synergyAPI->crudOperations('subscriptionCreateClient', $newTenantRequest);
+    // ConvertTo Array
+    $newTenantResult = json_decode(json_encode($newTenantResult), true);
 
     $formatted = synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
     if ($newTenantResult['error'] || !$newTenantResult['identifier']) {
@@ -118,9 +139,10 @@ function synergywholesale_microsoft365_CreateAccount($params)
 
         return $formatted;
     }
-    // Insert new values of Remote Tenant ID, Domain Prefix into custom fields
-    $whmcsLocalDb->createNewCustomFieldValues($customFields['Remote Tenant ID']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
-    $whmcsLocalDb->createNewCustomFieldValues($customFields['Domain Prefix']['fieldId'], $params['serviceid'], $newTenantResult['domainPrefix']);
+
+    // Update new values of Remote Tenant ID, Domain Prefix into custom fields
+    $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Tenant ID']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
+    $whmcsLocalDb->updateCustomFieldValues($customFields['Domain Prefix']['fieldId'], $params['serviceid'], $newTenantResult['domainPrefix']);
 
     // Logs for successful
     logModuleCall(MODULE_NAME, 'CreateAccount', $newTenantRequest, [
@@ -147,18 +169,21 @@ function synergywholesale_microsoft365_CreateAccount($params)
     // Check if all the quantities of config options are 0, that mean user has just placed the order, so we only want to create the tenant, not subscriptions
     $purchasableOrder = [];
     foreach ($subscriptionOrder as $order) {
-        if ($order['quantity'] != 0) {
-            $purchasableOrder[] = $order;
-        }
+        $purchasableOrder[] = $order['quantity'];
+//        if ($order['quantity'] != 0) {
+//            $purchasableOrder[] = $order;
+//        }
     }
     if (empty($purchasableOrder)) {
         return OK_CREATE_TENANT;
     }
 
     //Format and merge array for request
-    $newSubscriptionsRequest = array_merge($subscriptionOrder, ['identifier' => $tenantId]);
+    $newSubscriptionsRequest = array_merge(['subscriptionOrder' => $purchasableOrder], ['identifier' => $tenantId]);
     // Send request to SWS API
     $newSubscriptionsResult = $synergyAPI->crudOperations('subscriptionPurchase', $newSubscriptionsRequest);
+    // ConvertTo Array
+    $newSubscriptionsResult = json_decode(json_encode($newSubscriptionsResult), true);
 
     $formatted = synergywholesale_microsoft365_formatStatusAndMessage($newSubscriptionsResult);
     if ($newSubscriptionsResult['error'] || !$newSubscriptionsResult['subscriptionList']) {
@@ -177,23 +202,11 @@ function synergywholesale_microsoft365_CreateAccount($params)
 
     // Generate data for saving new subscriptions ID as format "productId|subscriptionId"
     $remoteSubscriptionData = [];
-    foreach ($newSubscriptionsResult as $eachSubscription) {
+    foreach ($newSubscriptionsResult['subscriptionList'] as $eachSubscription) {
         $remoteSubscriptionData[] = "{$eachSubscription['productId']}|{$eachSubscription['subscriptionId']}";
     }
 
-    // If current subscription data is empty, then we insert
-    if (empty($customFields['Remote Subscriptions']['value'])) {
-        $whmcsLocalDb->createNewCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
-
-        // Logs for successful
-        logModuleCall(MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
-            'status' => $newSubscriptionsResult['status'],
-            'message' => $newSubscriptionsResult['errorMessage'],
-        ], $formatted);
-
-        return OK_PROVISION;
-    }
-
+    // Update new records to local database
     $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
 
     // Logs for successful
@@ -578,13 +591,8 @@ function synergywholesale_microsoft365_ChangePlan($params)
 
             // Retrieve the custom fields of this service
             $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
-
-            // If current subscription data is empty, then we insert
-            if (empty($customFields['Remote Subscriptions']['value'])) {
-                $whmcsLocalDb->createNewCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
-            } else {
-                $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
-            }
+            // Update records to local database
+            $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
         }
     }
 
@@ -697,7 +705,7 @@ function synergywholesale_microsoft365_formatStatusAndMessage($apiResult)
 
     // If 'error' is set, that means the SWS API or LocalDB failed to perform action
     // If not, that means the process was successful, then we return code 'SUCCESS' along with the message (SWS API set it as 'errorMessage' even if successful)
-    return "[{$apiResult['status']}] {$apiResult['error']}" ?? "[SUCCESS] {$apiResult->errorMessage}.";
+    return $apiResult['error'] ? "[{$apiResult['status']}] {$apiResult['error']}" : "[SUCCESS] {$apiResult['errorMessage']}.";
 
 }
 

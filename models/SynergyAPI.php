@@ -1,9 +1,9 @@
 <?php
-namespace WHMCS\Microsoft365\Models;
+namespace WHMCS\Module\Server\SynergywholesaleMicrosoft365;
 
 class SynergyAPI {
 
-    const API_ENDPOINT = 'https://api.synergywholesale.test/?wsdl';
+    const API_ENDPOINT = 'https://api-ote.synergywholesale.com';
     const MODULE_NAME = 'synergywholesale_microsoft365';
     private $client;
     private $resellerId;
@@ -53,9 +53,9 @@ class SynergyAPI {
         try {
             $response = $this->client->{$action}($request);
             $logResponse = is_string($response) ? $response : (array) $response;
-            logModuleCall(self::MODULE_NAME, $action, $request, $logResponse, $logResponse, $this->auth);
+            logModuleCall(self::MODULE_NAME, $action, $request, $logResponse);
         } catch (SoapFault $e) {
-            logModuleCall(self::MODULE_NAME, $action, $request, $e->getMessage(), $e->getMessage(), $this->auth);
+            logModuleCall(self::MODULE_NAME, $action, $request, $e->getMessage());
 
             return [
                 'status' => $e->getCode(),
