@@ -169,10 +169,9 @@ function synergywholesale_microsoft365_CreateAccount($params)
     // Check if all the quantities of config options are 0, that mean user has just placed the order, so we only want to create the tenant, not subscriptions
     $purchasableOrder = [];
     foreach ($subscriptionOrder as $order) {
-        $purchasableOrder[] = $order['quantity'];
-//        if ($order['quantity'] != 0) {
-//            $purchasableOrder[] = $order;
-//        }
+        if ($order['quantity'] != 0) {
+            $purchasableOrder[] = $order;
+        }
     }
     if (empty($purchasableOrder)) {
         return OK_CREATE_TENANT;
@@ -223,7 +222,7 @@ function synergywholesale_microsoft365_SuspendAccount($params)
 {
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
-    $synergyAPI = new SynergyAPI(['configoption1'], $params['configoption2']);
+    $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
 
     // Retrieve list of custom fields of this service
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
@@ -248,6 +247,9 @@ function synergywholesale_microsoft365_SuspendAccount($params)
 
         // Check if subscription is currently in Active or Pending, if NOT, then skip it
         $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $subscriptionId);
+        // ConvertTo Array
+        $thisSubscription = json_decode(json_encode($thisSubscription), true);
+
         if ($thisSubscription['error'] || !$thisSubscription) {
             $formatted = synergywholesale_microsoft365_formatStatusAndMessage($thisSubscription);
             $error[] = "[{$subscriptionId}] {$formatted}";
@@ -255,18 +257,19 @@ function synergywholesale_microsoft365_SuspendAccount($params)
         }
 
         // Validate if current service status is valid for suspend, if error exists then we skip it
-        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Suspend', $thisSubscription['domainStatus'], $subscriptionId);
+        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Suspend', $thisSubscription['subscriptionStatus'], $subscriptionId);
         if ($validateResult) {
             $error[] = $validateResult;
             continue;
         }
 
         // Send request for provisioning and format the response for display
-        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($synergyAPI->provisioningActions('subscriptionSuspend', $subscriptionId));
+        $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionSuspend', $subscriptionId)), true);
+        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
-        if (!strpos($formattedMessage, '[SUCCESS]')) {
+        if (!strpos($formattedMessage, '[ SUCCESS ]')) {
             $error[] = "[{$subscriptionId}] {$formattedMessage}";
             continue;
         }
@@ -331,6 +334,9 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
         // If it is currently  terminated, then skip it
         // We only unsuspend if it is suspended
         $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $subscriptionId);
+        // ConvertTo Array
+        $thisSubscription = json_decode(json_encode($thisSubscription), true);
+
         if ($thisSubscription['error'] || !$thisSubscription) {
             $formatted = synergywholesale_microsoft365_formatStatusAndMessage($thisSubscription);
             $error[] = "[{$subscriptionId}] {$formatted}";
@@ -338,18 +344,19 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
         }
 
         // Validate if current service status is valid for unsuspend, if error exists then we skip it
-        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Suspend', $thisSubscription['domainStatus'], $subscriptionId);
+        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Suspend', $thisSubscription['subscriptionStatus'], $subscriptionId);
         if ($validateResult) {
             $error[] = $validateResult;
             continue;
         }
 
         // Send request for provisioning and format the response for display
-        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($synergyAPI->provisioningActions('subscriptionUnsuspend', $subscriptionId));
+        $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionUnsuspend', $subscriptionId)), true);
+        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
-        if (!strpos($formattedMessage, '[SUCCESS]')) {
+        if (!strpos($formattedMessage, '[ SUCCESS ]')) {
             $error[] = "[{$subscriptionId}] {$formattedMessage}";
         }
 
@@ -412,6 +419,9 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         // Check if subscription is currently in terminated, then skip it
         // If it is currently  active stage or suspended stage, then we terminate
         $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $subscriptionId);
+        // ConvertTo Array
+        $thisSubscription = json_decode(json_encode($thisSubscription), true);
+
         if ($thisSubscription['error'] || !$thisSubscription) {
             $formatted = synergywholesale_microsoft365_formatStatusAndMessage($thisSubscription);
             $error[] = "[{$subscriptionId}] {$formatted}";
@@ -419,18 +429,19 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         }
 
         // Validate if current service status is valid for unsuspend, if error exists then we skip it
-        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Terminate', $thisSubscription['domainStatus'], $subscriptionId);
+        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Terminate', $thisSubscription['subscriptionStatus'], $subscriptionId);
         if ($validateResult) {
             $error[] = $validateResult;
             continue;
         }
 
         // Send request for provisioning and format the response for display
-        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($synergyAPI->provisioningActions('subscriptionTerminate', $subscriptionId));
+        $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionTerminate', $subscriptionId)), true);
+        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
-        if (!strpos($formattedMessage, '[SUCCESS]')) {
+        if (!strpos($formattedMessage, '[ SUCCESS ]')) {
             $error[] = "[{$subscriptionId}] {$formattedMessage}";
         }
 
@@ -705,7 +716,7 @@ function synergywholesale_microsoft365_formatStatusAndMessage($apiResult)
 
     // If 'error' is set, that means the SWS API or LocalDB failed to perform action
     // If not, that means the process was successful, then we return code 'SUCCESS' along with the message (SWS API set it as 'errorMessage' even if successful)
-    return $apiResult['error'] ? "[{$apiResult['status']}] {$apiResult['error']}" : "[SUCCESS] {$apiResult['errorMessage']}.";
+    return $apiResult['error'] ? "[{$apiResult['status']}] {$apiResult['error']}" : "[ SUCCESS ] {$apiResult['errorMessage']}.";
 
 }
 
