@@ -59,7 +59,7 @@ function synergywholesale_microsoft365_ConfigOptions()
 }
 
 /** Create new tenant and subscriptions in SWS API */
-function synergywholesae_microsoft365_CreateAccount($params)
+function synergywholesale_microsoft365_CreateAccount($params)
 {
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
@@ -631,7 +631,7 @@ function synergywholesale_micrsoft365_AdminCustomButtonArray()
 function synergywholesale_microsoft365_metaData()
 {
     return [
-        'DisplayName' => 'Synergy Wholesale Hosting',
+        'DisplayName' => 'Synergy Wholesale Microsoft 365',
     ];
 }
 
