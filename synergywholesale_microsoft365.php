@@ -4,6 +4,7 @@ use WHMCS\Database\Capsule as DB;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\SynergyAPI;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\WhmcsLocalDb as LocalDB;
 
+const SUCCESS = 'success';
 const MODULE_NAME = 'synergywholesale_microsoft365';
 const OK_PROVISION = '[SUCCESS] Successfully provisioned new service.';
 const TENANT_EXISTED = '[FAILED] This tenant has already been created.';
@@ -177,7 +178,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
         }
     }
     if (empty($purchasableOrder)) {
-        return OK_CREATE_TENANT;
+        return SUCCESS;
     }
 
     //Format and merge array for request
@@ -217,7 +218,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
         'message' => $newSubscriptionsResult['errorMessage'],
     ], $formatted);
 
-    return OK_PROVISION;
+    return SUCCESS;
 }
 
 /** Suspend service and subscriptions in SWS API */
@@ -302,7 +303,7 @@ function synergywholesale_microsoft365_SuspendAccount($params)
         'serviceId' => $params['serviceid'],
     ], $success, OK_SUSPEND . implode(', ', $success));
 
-    return OK_SUSPEND;
+    return SUCCESS;
 }
 
 /** Unsuspend service and subscriptions in SWS API */
@@ -389,7 +390,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
         'serviceId' => $params['serviceid'],
     ], $success, OK_UNSUSPEND . implode(', ', $success));
 
-    return OK_UNSUSPEND;
+    return SUCCESS;
 }
 
 /** Terminate service and subscriptions in SWS API */
@@ -473,7 +474,7 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         'serviceId' => $params['serviceid'],
     ], $success, OK_TERMINATE);
 
-    return OK_TERMINATE;
+    return SUCCESS;
 
 }
 
