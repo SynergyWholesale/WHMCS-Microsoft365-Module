@@ -269,7 +269,7 @@ function synergywholesale_microsoft365_SuspendAccount($params)
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
-        if (!strpos($formattedMessage, '[ SUCCESS ]')) {
+        if (!strpos($formattedMessage, '[SUCCESS]')) {
             $error[] = "[{$subscriptionId}] {$formattedMessage}";
             continue;
         }
@@ -356,7 +356,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
-        if (!strpos($formattedMessage, '[ SUCCESS ]')) {
+        if (!strpos($formattedMessage, '[SUCCESS]')) {
             $error[] = "[{$subscriptionId}] {$formattedMessage}";
         }
 
@@ -419,9 +419,6 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         // Check if subscription is currently in terminated, then skip it
         // If it is currently  active stage or suspended stage, then we terminate
         $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $subscriptionId);
-        // ConvertTo Array
-        $thisSubscription = json_decode(json_encode($thisSubscription), true);
-
         if ($thisSubscription['error'] || !$thisSubscription) {
             $formatted = synergywholesale_microsoft365_formatStatusAndMessage($thisSubscription);
             $error[] = "[{$subscriptionId}] {$formatted}";
@@ -429,19 +426,18 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         }
 
         // Validate if current service status is valid for unsuspend, if error exists then we skip it
-        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Terminate', $thisSubscription['subscriptionStatus'], $subscriptionId);
+        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Terminate', $thisSubscription['domainStatus'], $subscriptionId);
         if ($validateResult) {
             $error[] = $validateResult;
             continue;
         }
 
         // Send request for provisioning and format the response for display
-        $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionTerminate', $subscriptionId)), true);
-        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
+        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($synergyAPI->provisioningActions('subscriptionTerminate', $subscriptionId));
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
-        if (!strpos($formattedMessage, '[ SUCCESS ]')) {
+        if (!strpos($formattedMessage, '[SUCCESS]')) {
             $error[] = "[{$subscriptionId}] {$formattedMessage}";
         }
 
@@ -487,17 +483,17 @@ function synergywholesale_microsoft365_TerminateAccount($params)
  * @param $params
  * @return string
  */
-function synergywholesale_microsoft365_ChangePlan($params)
+function synergywholesale_microsoft365_ChangePackage($params)
 {
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
-    $synergyAPI = new SynergyAPI(['configoption1'], $params['configoption2']);
+    $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
 
     // TODO: May need to retrieve current values from SWS API and compare with new records to generate log message
 
     // Get existing subscriptions (custom fields) and overall subscriptions (config options) from local WHMCS DB
-    $existingSubscriptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'changePlan');
-    $overallSubscriptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'create');
+    $existingSubscriptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'changePlan', $params['pid']);
+    $overallSubscriptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'compare');
 
     $subscriptionsToCreate = [];
 
@@ -507,7 +503,7 @@ function synergywholesale_microsoft365_ChangePlan($params)
         $productId = $row['productId'];
 
         /** If this config option doesn't exist in custom fields, that means this subscription hasn't been created in Synergy */
-        if (!empty($existingSubscriptions[$productId])) {
+        if (empty($existingSubscriptions[$productId])) {
             // If quantity = 0, that means user doesn't want to create new subscription for this config option, we can just skip it
             if ($row['quantity'] == 0) {
                 continue;
@@ -525,13 +521,27 @@ function synergywholesale_microsoft365_ChangePlan($params)
         }
 
         /** Otherwise if this config option exists in custom fields, that mean this subscription already provisioned in Synergy, now we check 'quantity' to see if we need to terminate or update quantity for this subscription */
-        $existingSubscriptionId = $existingSubscriptions['subscriptionId'];
+        $existingSubscriptionId = $existingSubscriptions[$productId]['subscriptionId'];
 
         // Get current details of subscription from Synergy API
         $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $existingSubscriptionId);
+        // ConvertTo Array
+        $thisSubscription = json_decode(json_encode($thisSubscription), true);
+
         if ($thisSubscription['error'] || !$thisSubscription) {
             $formatted = synergywholesale_microsoft365_formatStatusAndMessage($thisSubscription);
             $error[] = "[CURRENT SUBSCRIPTION] [{$existingSubscriptionId}] {$formatted}";
+            continue;
+        }
+
+        foreach ($thisSubscription['tasks'] as $task) {
+            if (in_array($task['status'],['InProgress', 'Pending'])) {
+                $error[] = "[CURRENT SUBSCRIPTION] [{$existingSubscriptionId}] Failed to update quantity due to pending subscription tasks.";
+                break;
+            }
+        }
+
+        if (!empty($error)) {
             continue;
         }
 
@@ -547,11 +557,13 @@ function synergywholesale_microsoft365_ChangePlan($params)
             }
 
             // If error status is NULL, then we terminate this subscription
-            $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($synergyAPI->provisioningActions('subscriptionTerminate', $existingSubscriptionId));
+            $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionTerminate', $existingSubscriptionId)), true);
+            $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
 
             // This means the API request wasn't successful, add this ID to $error array for displaying message
             if (!strpos($formattedMessage, '[SUCCESS]')) {
                 $error[] = "[{$existingSubscriptionId}] {$formattedMessage}";
+                continue;
             }
 
             $success[] = "[TERMINATE SUBSCRIPTION] [{$existingSubscriptionId}] {$formattedMessage}";
@@ -565,14 +577,16 @@ function synergywholesale_microsoft365_ChangePlan($params)
         }
 
         // Otherwise we perform update quantity for this subscription
-        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($synergyAPI->crudOperations('subscriptionUpdateQuantity', [
+        $actionResult = json_decode(json_encode($synergyAPI->crudOperations('subscriptionUpdateQuantity', [
             'identifier' => $existingSubscriptionId,
             'quantity' => $row['quantity'],
-        ]));
+        ])), true);
+        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
         if (!strpos($formattedMessage, '[SUCCESS]')) {
             $error[] = "[{$existingSubscriptionId}] {$formattedMessage}";
+            continue;
         }
 
         $success[] = "[CHANGE QUANTITY SUBSCRIPTION] [{$existingSubscriptionId}] Successfully updated to {$row['quantity']} seat(s).";
@@ -588,7 +602,10 @@ function synergywholesale_microsoft365_ChangePlan($params)
         }
 
         // Send API request to SWS for purchasing new subscription(s)
-        $purchaseResult = $synergyAPI->crudOperations('subscriptionPurchase', array_merge($subscriptionsToCreate, ['identifier' => $tenantId]));
+        $purchaseResult = $synergyAPI->crudOperations('subscriptionPurchase', array_merge(['subscriptionOrder' => $subscriptionsToCreate], ['identifier' => $tenantId]));
+        // Convert to array
+        $purchaseResult = json_decode(json_encode($purchaseResult), true);
+
         if ($purchaseResult['error'] || !$purchaseResult['subscriptionList']) {
             $error[] = "[NEW SUBSCRIPTION] " . synergywholesale_microsoft365_formatStatusAndMessage($purchaseResult);
         } else {
@@ -612,10 +629,10 @@ function synergywholesale_microsoft365_ChangePlan($params)
         $returnMessage = FAILED_CHANGE_PLAN . ' Error: ' . implode(', ', $error);
 
         // Logs for error
-        logModuleCall(MODULE_NAME, 'ChangePlan', [
-            'productId' => $params['pid'],
-            'serviceId' => $params['serviceid'],
-        ], $error, $returnMessage);
+         logModuleCall(MODULE_NAME, 'ChangePlan', [
+             'productId' => $params['pid'],
+             'serviceId' => $params['serviceid'],
+         ], $error);
 
         return $returnMessage;
     }
@@ -642,7 +659,6 @@ function synergywholesale_microsoft365_Sync($params)
 function synergywholesale_micrsoft365_AdminCustomButtonArray()
 {
     return [
-        'Change Plan' => 'ChangePlan',
         'Sync Data' => 'Sync',
     ];
 }
@@ -716,7 +732,7 @@ function synergywholesale_microsoft365_formatStatusAndMessage($apiResult)
 
     // If 'error' is set, that means the SWS API or LocalDB failed to perform action
     // If not, that means the process was successful, then we return code 'SUCCESS' along with the message (SWS API set it as 'errorMessage' even if successful)
-    return $apiResult['error'] ? "[{$apiResult['status']}] {$apiResult['error']}" : "[ SUCCESS ] {$apiResult['errorMessage']}.";
+    return $apiResult['error'] ? "[{$apiResult['status']}] {$apiResult['error']}" : "[SUCCESS] {$apiResult['errorMessage']}.";
 
 }
 

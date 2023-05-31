@@ -49,7 +49,7 @@ class WhmcsLocalDb {
         return DB::table($target)->where('id', $id)->delete();
     }
 
-    public function getSubscriptionsForAction($serviceId, $action)
+    public function getSubscriptionsForAction($serviceId, $action, $localProductId = '')
     {
         $return = [];
         $configOptions = DB::table('tblhostingconfigoptions')
@@ -59,43 +59,58 @@ class WhmcsLocalDb {
             ->get();
 
         if ($configOptions) {
-            foreach ($configOptions as $row)
-            {
-                if (strpos($row->optionname, '|') && $row->qty >= 0) {
-                    $productId = explode('|', $row->optionname)[0];
+                switch ($action) {
+                    case 'changePlan':
+                        $customFieldsNeeded = $this->getProductAndServiceCustomFields($localProductId, $serviceId);
 
-                    switch ($action) {
-                        case 'changePlan':
-                            $customFieldsNeeded = $this->getProductAndServiceCustomFields($productId, $serviceId);
+                        // Otherwise if it has more than 1 subscriptions, we loop through and return the list of subscriptions
+                        foreach (explode(', ',$customFieldsNeeded['Remote Subscriptions']['value']) as $eachSubscription) {
 
-                            // Remote subscriptions value is formatted as "productId|subscriptionId, productId|subscriptionId"
-                            foreach (explode(', ', $customFieldsNeeded['Remote Subscriptions']['value']) as $eachSubscription) {
-                                $subscriptionId = explode('|', $eachSubscription)[1];
+                            $subscriptionId = explode('|', $eachSubscription)[1];
+                            $remoteProductId = explode('|', $eachSubscription)[0];
 
-                                // Then we add each subscription record into $return array
-                                $return[$productId] = [
-                                    'subscriptionId' => $subscriptionId,
+                            // Then we add each subscription record into $return array
+                            $return[$remoteProductId] = [
+                                'subscriptionId' => $subscriptionId,
+                            ];
+                        }
+                    break;
+
+                    case 'compare':
+                        foreach ($configOptions as $row) {
+                            if (strpos($row->optionname, '|') && $row->qty >= 0) {
+                                $productId = explode('|', $row->optionname)[0];
+
+                                // For compare action, we would want to take all config options even if quantity is 0
+                                $return[] = [
+                                    'productId' => $productId,
                                     'quantity' => $row->qty,
                                 ];
                             }
-                            break;
-                        case 'create':
-                        default:
-                            // If this option has 0 quantity, that means user didn't order it, just skip it
-                            if ($row->qty == 0) {
-                                break;
-                            }
+                        }
+                    break;
 
-                            // Otherwise if it's greater than 0, we add it to order
-                            $return[] = [
-                                'productId' => $productId,
-                                'quantity' => $row->qty,
-                            ];
-                            break;
-                    }
+                    case 'create':
+                    default:
+                        foreach ($configOptions as $row) {
+                            if (strpos($row->optionname, '|') && $row->qty >= 0) {
+                                $productId = explode('|', $row->optionname)[0];
+                                // If this option has 0 quantity, that means user didn't order it, just skip it
+                                if ($row->qty == 0) {
+                                    break;
+                                }
+
+                                // Otherwise if it's greater than 0, we add it to order
+                                $return[] = [
+                                    'productId' => $productId,
+                                    'quantity' => $row->qty,
+                                ];
+                            }
+                        }
+                    break;
                 }
-            }
         }
+
         return $return;
     }
 
@@ -125,12 +140,11 @@ class WhmcsLocalDb {
         $return = [];
         foreach ($customFields as $row) {
             if($row->fieldtype == 'checkbox') {
-                $return[] = [
-                    $row->fieldname => [
-                        'fieldId' => $row->id,
-                        'value' => $fieldValues[$row->id] ?? false,
-                    ]
+                $return[$row->fieldname]  = [
+                    'fieldId' => $row->id,
+                    'value' => $fieldValues[$row->id] ?? false,
                 ];
+
                 continue;
             }
 
