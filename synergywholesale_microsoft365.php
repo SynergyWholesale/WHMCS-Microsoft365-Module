@@ -10,7 +10,7 @@ const TENANT_EXISTED = '[FAILED] This tenant has already been created.';
 const OK_CREATE_TENANT = '[SUCCESS] Successfully created new tenant.';
 const OK_SUSPEND = '[SUCCESS] Successfully suspended service.';
 const OK_UNSUSPEND = '[SUCCESS] Successfully unsuspended service.';
-const OK_TERMINATE = '[SUCCESS] Successfully unsuspended service.';
+const OK_TERMINATE = '[SUCCESS] Successfully terminated service.';
 const OK_CHANGE_PLAN = '[SUCCESS] Successfully changed plan for service.';
 const FAILED_SUSPEND_LIST = '[FAILED] Failed to suspend the following subscriptions: ';
 const FAILED_UNSUSPEND_LIST = '[FAILED] Failed to unsuspend the following subscriptions: ';
@@ -30,6 +30,8 @@ const ACTIVE_STATUS = [
 const SUSPENDED_STATUS = [
     STATUS_SUSPENDED,
     STATUS_STAFF_SUSPENDED,
+    STATUS_DELETED,
+    STATUS_CANCELLED,
 ];
 
 const TERMINATED_STATUS = [
@@ -108,53 +110,54 @@ function synergywholesale_microsoft365_CreateAccount($params)
                 'message' => $remoteTenant['errorMessage'],
             ], TENANT_EXISTED);
 
-            return TENANT_EXISTED;
+            $tenantId = $customFields['Remote Tenant ID']['value'];
         }
-    }
 
-    /**
-     * START CREATE NEW TENANT IN SYNERGY
-     */
-    $otherData = [
-        'password' => $params['password'],
-        'description' => $clientObj->description ?? '',
-        'agreement' => !empty($customFields['Customer Agreement']['value']) &&  $customFields['Customer Agreement']['value'] == 'on',
-    ];
+    } else {
+        /**
+         * START CREATE NEW TENANT IN SYNERGY
+         */
+        $otherData = [
+            'password' => $params['password'],
+            'description' => $clientObj->description ?? '',
+            'agreement' => !empty($customFields['Customer Agreement']['value']) &&  $customFields['Customer Agreement']['value'] == 'on',
+        ];
 
-    // Format and merge array for request
-    $newTenantRequest = array_merge($clientDetails, $otherData);
-    // Send request to SWS API
-    $newTenantResult = $synergyAPI->crudOperations('subscriptionCreateClient', $newTenantRequest);
-    // ConvertTo Array
-    $newTenantResult = json_decode(json_encode($newTenantResult), true);
+        // Format and merge array for request
+        $newTenantRequest = array_merge($clientDetails, $otherData);
+        // Send request to SWS API
+        $newTenantResult = $synergyAPI->crudOperations('subscriptionCreateClient', $newTenantRequest);
+        // ConvertTo Array
+        $newTenantResult = json_decode(json_encode($newTenantResult), true);
 
-    $formatted = synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
-    if ($newTenantResult['error'] || !$newTenantResult['identifier']) {
+        $formatted = synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
+        if ($newTenantResult['error'] || !$newTenantResult['identifier']) {
 
-        // Logs for error
+            // Logs for error
+            logModuleCall(MODULE_NAME, 'CreateAccount', $newTenantRequest, [
+                'status' => $newTenantResult['status'],
+                'error' => $newTenantResult['error'],
+            ], $formatted);
+
+            return $formatted;
+        }
+
+        // Update new values of Remote Tenant ID, Domain Prefix into custom fields
+        $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Tenant ID']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
+        $whmcsLocalDb->updateCustomFieldValues($customFields['Domain Prefix']['fieldId'], $params['serviceid'], $newTenantResult['domainPrefix']);
+
+        // Logs for successful
         logModuleCall(MODULE_NAME, 'CreateAccount', $newTenantRequest, [
             'status' => $newTenantResult['status'],
-            'error' => $newTenantResult['error'],
+            'message' => $newTenantResult['errorMessage'],
         ], $formatted);
 
-        return $formatted;
+        $tenantId = $newTenantResult['identifier'];
     }
-
-    // Update new values of Remote Tenant ID, Domain Prefix into custom fields
-    $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Tenant ID']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
-    $whmcsLocalDb->updateCustomFieldValues($customFields['Domain Prefix']['fieldId'], $params['serviceid'], $newTenantResult['domainPrefix']);
-
-    // Logs for successful
-    logModuleCall(MODULE_NAME, 'CreateAccount', $newTenantRequest, [
-        'status' => $newTenantResult['status'],
-        'message' => $newTenantResult['errorMessage'],
-    ], $formatted);
 
     /**
      * START CREATE NEW SUBSCRIPTION IN SYNERGY
      */
-    $tenantId = $newTenantResult['identifier'];
-
     // Get and organise subscriptionOrder request for SWS API
     $subscriptionOrder = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'create');
     if (empty($subscriptionOrder)) {
@@ -269,7 +272,7 @@ function synergywholesale_microsoft365_SuspendAccount($params)
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
-        if (!strpos($formattedMessage, '[SUCCESS]')) {
+        if (!is_numeric(strpos($formattedMessage, '[SUCCESS]'))) {
             $error[] = "[{$subscriptionId}] {$formattedMessage}";
             continue;
         }
@@ -297,7 +300,7 @@ function synergywholesale_microsoft365_SuspendAccount($params)
     logModuleCall(MODULE_NAME, 'SuspendAccount', [
         'productId' => $params['pid'],
         'serviceId' => $params['serviceid'],
-    ], $success, OK_SUSPEND);
+    ], $success, OK_SUSPEND . implode(', ', $success));
 
     return OK_SUSPEND;
 }
@@ -307,7 +310,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
 {
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
-    $synergyAPI = new SynergyAPI(['configoption1'], $params['configoption2']);
+    $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
 
     // Retrieve list of custom fields of this service
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
@@ -344,7 +347,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
         }
 
         // Validate if current service status is valid for unsuspend, if error exists then we skip it
-        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Suspend', $thisSubscription['subscriptionStatus'], $subscriptionId);
+        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Unsuspend', $thisSubscription['subscriptionStatus'], $subscriptionId);
         if ($validateResult) {
             $error[] = $validateResult;
             continue;
@@ -356,8 +359,9 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
-        if (!strpos($formattedMessage, '[SUCCESS]')) {
+        if (!is_numeric(strpos($formattedMessage, '[SUCCESS]'))) {
             $error[] = "[{$subscriptionId}] {$formattedMessage}";
+            continue;
         }
 
         $success[] = "[{$subscriptionId}] {$formattedMessage}";
@@ -383,7 +387,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
     logModuleCall(MODULE_NAME, 'UnsuspendAccount', [
         'productId' => $params['pid'],
         'serviceId' => $params['serviceid'],
-    ], $success, OK_UNSUSPEND);
+    ], $success, OK_UNSUSPEND . implode(', ', $success));
 
     return OK_UNSUSPEND;
 }
@@ -393,7 +397,7 @@ function synergywholesale_microsoft365_TerminateAccount($params)
 {
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
-    $synergyAPI = new SynergyAPI(['configoption1'], $params['configoption2']);
+    $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
 
     // Retrieve list of custom fields of this service
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
@@ -419,6 +423,9 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         // Check if subscription is currently in terminated, then skip it
         // If it is currently  active stage or suspended stage, then we terminate
         $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $subscriptionId);
+        // ConvertTo Array
+        $thisSubscription = json_decode(json_encode($thisSubscription), true);
+
         if ($thisSubscription['error'] || !$thisSubscription) {
             $formatted = synergywholesale_microsoft365_formatStatusAndMessage($thisSubscription);
             $error[] = "[{$subscriptionId}] {$formatted}";
@@ -433,11 +440,12 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         }
 
         // Send request for provisioning and format the response for display
-        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($synergyAPI->provisioningActions('subscriptionTerminate', $subscriptionId));
+        $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionTerminate', $subscriptionId)), true);
+        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
-        if (!strpos($formattedMessage, '[SUCCESS]')) {
+        if (!is_numeric(strpos($formattedMessage, '[SUCCESS]'))) {
             $error[] = "[{$subscriptionId}] {$formattedMessage}";
         }
 
@@ -495,11 +503,14 @@ function synergywholesale_microsoft365_ChangePackage($params)
     $existingSubscriptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'changePlan', $params['pid']);
     $overallSubscriptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'compare');
 
+    // In case of tenant has switched to a new package, we need to set quantities of subscriptions from previous package to 0, so that we can terminate them in the request below
+    $requestSubscriptions = synergywholesale_microsoft365_checkAndFilterPackageChange($params['configoptions'], $overallSubscriptions);
+
     $subscriptionsToCreate = [];
 
     $error = [];
     $success = [];
-    foreach ($overallSubscriptions as $row) {
+    foreach ($requestSubscriptions as $row) {
         $productId = $row['productId'];
 
         /** If this config option doesn't exist in custom fields, that means this subscription hasn't been created in Synergy */
@@ -561,7 +572,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
             $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
 
             // This means the API request wasn't successful, add this ID to $error array for displaying message
-            if (!strpos($formattedMessage, '[SUCCESS]')) {
+            if (!is_numeric(strpos($formattedMessage, '[SUCCESS]'))) {
                 $error[] = "[{$existingSubscriptionId}] {$formattedMessage}";
                 continue;
             }
@@ -576,6 +587,11 @@ function synergywholesale_microsoft365_ChangePackage($params)
             continue;
         }
 
+        // If quantity = currnet quantity in Synergy, that means user doesn't change seat on this subscription, just ignore
+        if ($row['quantity'] = $thisSubscription['quantity']) {
+            continue;
+        }
+
         // Otherwise we perform update quantity for this subscription
         $actionResult = json_decode(json_encode($synergyAPI->crudOperations('subscriptionUpdateQuantity', [
             'identifier' => $existingSubscriptionId,
@@ -584,7 +600,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
         $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
 
         // This means the API request wasn't successful, add this ID to $error array for displaying message
-        if (!strpos($formattedMessage, '[SUCCESS]')) {
+        if (!is_numeric(strpos($formattedMessage, '[SUCCESS]'))) {
             $error[] = "[{$existingSubscriptionId}] {$formattedMessage}";
             continue;
         }
@@ -613,7 +629,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
 
             // Generate data for saving new subscriptions ID as format "productId|subscriptionId"
             $remoteSubscriptionData = [];
-            foreach ($purchaseResult as $eachSubscription) {
+            foreach ($purchaseResult['subscriptionList'] as $eachSubscription) {
                 $remoteSubscriptionData[] = "{$eachSubscription['productId']}|{$eachSubscription['subscriptionId']}";
             }
 
@@ -632,7 +648,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
          logModuleCall(MODULE_NAME, 'ChangePlan', [
              'productId' => $params['pid'],
              'serviceId' => $params['serviceid'],
-         ], $error);
+         ], $error, $returnMessage);
 
         return $returnMessage;
     }
@@ -641,12 +657,31 @@ function synergywholesale_microsoft365_ChangePackage($params)
     logModuleCall(MODULE_NAME, 'ChangePlan', [
         'productId' => $params['pid'],
         'serviceId' => $params['serviceid'],
-    ], $success, OK_CHANGE_PLAN);
+    ], $success, OK_CHANGE_PLAN . implode(', ', $success));
 
     /** Update new remote subscriptions into WHMCS database */
 
     return OK_CHANGE_PLAN;
 
+}
+
+function synergywholesale_microsoft365_checkAndFilterPackageChange($filteredList, $fullList)
+{
+    // Get list of Product IDs within the current config group
+    $filteredProductIds = array_keys($filteredList);
+
+    $return = [];
+    foreach ($fullList as $eachProduct) {
+        // If this product is not in the filtered list, that means tenant has switched package, and we need to reset quantity of it to 0
+        if (!in_array($eachProduct['productId'], $filteredProductIds)) {
+            $eachProduct['quantity'] = 0;
+        }
+
+        // If this product is in filtered list, that means we just hold it back in the request data, no need to set quantity to 0
+        $return[] = $eachProduct;
+    }
+
+    return $return;
 }
 
 /** Perform sync data from SWS API to WHMCS */
@@ -698,11 +733,6 @@ function synergywholesale_microsoft365_getSubscriptionStatusInvalid($action, $st
             // Message if subscription is already active or pending
             if (in_array($status, ACTIVE_STATUS)) {
                 return "[{$subscriptionId}] Subscription already active.";
-            }
-
-            // Message if subscription is already terminated
-            if (in_array($status, TERMINATED_STATUS)) {
-                return "[{$subscriptionId}] Subscription already terminated.";
             }
 
             // Message for other unrecognised statuses

@@ -53,9 +53,9 @@ class SynergyAPI {
         try {
             $response = $this->client->{$action}($request);
             $logResponse = is_string($response) ? $response : (array) $response;
-            logModuleCall(self::MODULE_NAME, $action, $request, $logResponse);
+            //logModuleCall(self::MODULE_NAME, $action, $request, $logResponse);
         } catch (SoapFault $e) {
-            logModuleCall(self::MODULE_NAME, $action, $request, $e->getMessage());
+            //logModuleCall(self::MODULE_NAME, $action, $request, $e->getMessage());
 
             return [
                 'status' => $e->getCode(),
