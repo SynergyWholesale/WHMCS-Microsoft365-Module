@@ -53,6 +53,7 @@ const STATE_MAP = [
 
 // Database tables
 const WHMCS_HOSTING_TABLE = 'tblhosting';
+const WHMCS_PRODUCT_TABLE = 'tblproducts';
 
 function synergywholesale_microsoft365_ConfigOptions()
 {
@@ -733,11 +734,22 @@ function synergywholesale_microsoft365_checkAndFilterPackageChange($filteredList
 
 function synergywholesale_microsoft365_ClientArea($params)
 {
+    // New instance of local WHMCS database and Synergy API
+    $whmcsLocalDb = new LocalDB();
+    $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
+
+    $currentProductLocal = $whmcsLocalDb->getById(WHMCS_PRODUCT_TABLE, $params['pid']);
+    $currentService = $whmcsLocalDb->getById(WHMCS_HOSTING_TABLE, $params['serviceid']);
+    $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
+    $configOptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'compare');
+
     return [
-        'tabOverviewReplacementTemplate' => 'clientarea',
+        'tabOverviewReplacementTemplate' => 'templates/clientarea',
         'vars' => [
-            'status' => 'active',
-            'service' => $params['serviceid'],
+            'service' => $currentService,
+            'product' => $currentProductLocal,
+            'customFields' => $customFields,
+            'configOptions' => $configOptions,
         ],
     ];
 }

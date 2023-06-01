@@ -84,6 +84,7 @@ class WhmcsLocalDb {
                                 // For compare action, we would want to take all config options even if quantity is 0
                                 $return[] = [
                                     'productId' => $productId,
+                                    'productName' => $row->optionname,
                                     'quantity' => $row->qty,
                                 ];
                             }
@@ -103,6 +104,7 @@ class WhmcsLocalDb {
                                 // Otherwise if it's greater than 0, we add it to order
                                 $return[] = [
                                     'productId' => $productId,
+                                    'productName' => $row->optionname,
                                     'quantity' => $row->qty,
                                 ];
                             }
