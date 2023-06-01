@@ -731,17 +731,64 @@ function synergywholesale_microsoft365_checkAndFilterPackageChange($filteredList
     return $return;
 }
 
-/** Perform sync data from SWS API to WHMCS */
-function synergywholesale_microsoft365_Sync($params)
-{
-
-}
-
-/** Define module buttons available for admin */
-function synergywholesale_micrsoft365_AdminCustomButtonArray()
+function synergywholesale_microsoft365_ClientArea($params)
 {
     return [
-        'Sync Data' => 'Sync',
+        'tabOverviewReplacementTemplate' => 'clientarea',
+        'vars' => [
+            'status' => 'active',
+            'service' => $params['serviceid'],
+        ],
+    ];
+}
+
+function synergywholesale_microsoft365_ClientAreaCustomButtonArray()
+{
+    return [
+        'Change Domain Prefix' => 'change_domain_prefix',
+        'Change Plan/Package' => 'change_plan_package.tpl',
+        'Office 365 Management Portal' => 'login_ms365_portal',
+        'View Customer Agreement' => 'view_customer_agreement',
+    ];
+}
+
+function synergywholesale_microsoft365_change_domain_prefix($params)
+{
+    return [
+        'templatefile' => 'change_domain_prefix',
+        'vars' => [
+            'serviceId' => $params['serviceid'],
+        ]
+    ];
+}
+
+function synergywholesale_microsoft365_change_plan_package($params)
+{
+    return [
+        'templatefile' => 'change_plan_package.tpl',
+        'vars' => [
+            'serviceId' => $params['serviceid'],
+        ]
+    ];
+}
+
+function synergywholesale_microsoft365_login_ms365_portal($params)
+{
+    return [
+        'templatefile' => 'login_ms365_portal',
+        'vars' => [
+            'serviceId' => $params['serviceid'],
+        ]
+    ];
+}
+
+function synergywholesale_microsoft365_view_customer_agreement($params)
+{
+    return [
+        'templatefile' => 'view_customer_agreement',
+        'vars' => [
+            'serviceId' => $params['serviceid'],
+        ]
     ];
 }
 
