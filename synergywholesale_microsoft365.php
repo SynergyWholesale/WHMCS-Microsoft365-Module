@@ -15,7 +15,7 @@ const OK_TERMINATE = '[SUCCESS] Successfully terminated service.';
 const OK_CHANGE_PLAN = '[SUCCESS] Successfully changed plan for service.';
 const FAILED_SUSPEND_LIST = '[FAILED] Failed to suspend the following subscriptions: ';
 const FAILED_UNSUSPEND_LIST = '[FAILED] Failed to unsuspend the following subscriptions: ';
-const FAILED_TERMINATE_LIST = '[FAILED] Failed to unsuspend the following subscriptions: ';
+const FAILED_TERMINATE_LIST = '[FAILED] Failed to terminate the following subscriptions: ';
 const FAILED_CHANGE_PLAN = '[FAILED] Failed to change plan for service.';
 const FAILED_INVALID_CONFIGURATION = '[FAILED] Unable to perform action due to invalid configuration.';
 const STATUS_DELETED = 'Deleted';
@@ -434,7 +434,7 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         }
 
         // Validate if current service status is valid for unsuspend, if error exists then we skip it
-        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Terminate', $thisSubscription['domainStatus'], $subscriptionId);
+        $validateResult = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Terminate', $thisSubscription['subscriptionStatus'], $subscriptionId);
         if ($validateResult) {
             $error[] = $validateResult;
             continue;
@@ -532,7 +532,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
             continue;
         }
 
-        /** Otherwise if this config option exists in custom fields, that mean this subscription already provisioned in Synergy, now we check 'quantity' to see if we need to terminate or update quantity for this subscription */
+        /** Otherwise if this config option exists in custom fields, that mean this subscription already provisioned in Synergy, now we check 'quantity' to see if we need to terminate, unsuspend or update quantity for this subscription */
         $existingSubscriptionId = $existingSubscriptions[$productId]['subscriptionId'];
 
         // Get current details of subscription from Synergy API
@@ -553,18 +553,13 @@ function synergywholesale_microsoft365_ChangePackage($params)
             }
         }
 
-        if (!empty($error)) {
-            continue;
-        }
-
         // If quantity = 0, that means user wants to terminate this subscription
         if ($row['quantity'] == 0) {
             // Validate if this subscription status is valid for termination
-            $validateStatus = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Terminate', $thisSubscription['domainStatus'], $existingSubscriptionId);
+            $validateStatus = synergywholesale_microsoft365_getSubscriptionStatusInvalid('Terminate', $thisSubscription['subscriptionStatus'], $existingSubscriptionId);
 
             // If error status exists, we add it to error logs
             if ($validateStatus) {
-                $error[] = "[TERMINATE SUBSCRIPTION] {$validateStatus}";
                 continue;
             }
 
@@ -588,35 +583,67 @@ function synergywholesale_microsoft365_ChangePackage($params)
             continue;
         }
 
-        // If quantity = currnet quantity in Synergy, that means user doesn't change seat on this subscription, just ignore
-        if ($row['quantity'] = $thisSubscription['quantity']) {
-            continue;
+        $updateQuantity = false;
+        // Check and handle action based on remote status of subscription
+        switch ($thisSubscription['subscriptionStatus']) {
+            // If service is suspended or cancelled, we unsuspend and update seat
+            case STATUS_SUSPENDED:
+            case STATUS_CANCELLED:
+                $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionUnsuspend', $existingSubscriptionId)), true);
+                $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
+
+                // This means the API request wasn't successful, add this ID to $error array for displaying message
+                if (!is_numeric(strpos($formattedMessage, '[SUCCESS]'))) {
+                    $error[] = "[{$existingSubscriptionId}] {$formattedMessage}";
+                    break;
+                }
+
+                $success[] = "[UNSUSPEND SUBSCRIPTION] [{$existingSubscriptionId}] {$formattedMessage}";
+
+                // After unsuspend the subscription, we would proceed to Update Quantity part below the switch
+                $updateQuantity = true;
+                break;
+
+            // if service is active or pending, we can just update seat accordingly
+            case STATUS_ACTIVE:
+            case STATUS_PENDING:
+                $updateQuantity = true;
+                break;
+
+            // If service is already deleted, we purchase new subscription for that product ID
+            // NOTE: In this case when purchase new subscription for that pre-own product, Synergy would re-activate the old subscription, so we don't have to delete or update the subscription ID in custom fields
+            case STATUS_DELETED:
+                $subscriptionsToCreate[] = $row;
+                break;
         }
 
-        // Otherwise we perform update quantity for this subscription
-        $actionResult = json_decode(json_encode($synergyAPI->crudOperations('subscriptionUpdateQuantity', [
-            'identifier' => $existingSubscriptionId,
-            'quantity' => $row['quantity'],
-        ])), true);
-        $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
+        // If UpdateQuantity is TRUE, we perform update quantity for this subscription
+        if ($updateQuantity) {
+            // If quantity = current quantity in Synergy, that means user doesn't change seat on this subscription, just ignore
+            if ($row['quantity'] == $thisSubscription['quantity']) {
+                $success[] = "[{$existingSubscriptionId}] Quantity hasn't changed.";
+                continue;
+            }
 
-        // This means the API request wasn't successful, add this ID to $error array for displaying message
-        if (!is_numeric(strpos($formattedMessage, '[SUCCESS]'))) {
-            $error[] = "[{$existingSubscriptionId}] {$formattedMessage}";
-            continue;
+            $actionResult = json_decode(json_encode($synergyAPI->crudOperations('subscriptionUpdateQuantity', [
+                'identifier' => $existingSubscriptionId,
+                'quantity' => $row['quantity'],
+            ])), true);
+            $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
+
+            // This means the API request wasn't successful, add this ID to $error array for displaying message
+            if (!is_numeric(strpos($formattedMessage, '[SUCCESS]'))) {
+                $error[] = "[{$existingSubscriptionId}] {$formattedMessage}";
+                continue;
+            }
+
+            $success[] = "[CHANGE QUANTITY SUBSCRIPTION] [{$existingSubscriptionId}] Successfully updated to {$row['quantity']} seat(s).";
         }
-
-        $success[] = "[CHANGE QUANTITY SUBSCRIPTION] [{$existingSubscriptionId}] Successfully updated to {$row['quantity']} seat(s).";
     }
 
     /** Now we want to check if $subscriptionsToCreate not empty, then we purchase subscriptions */
     if (!empty($subscriptionsToCreate)) {
         $tenantId = $params['customfields']['Remote Tenant ID'];
-
-        $orderLogMessage = [];
-        foreach ($subscriptionsToCreate as $row) {
-            $orderLogMessage[] = "{$row['productId']}|{$row['quantity']}";
-        }
 
         // Send API request to SWS for purchasing new subscription(s)
         $purchaseResult = $synergyAPI->crudOperations('subscriptionPurchase', array_merge(['subscriptionOrder' => $subscriptionsToCreate], ['identifier' => $tenantId]));
@@ -628,42 +655,61 @@ function synergywholesale_microsoft365_ChangePackage($params)
         } else {
             $success[] = "[NEW SUBSCRIPTION] " . synergywholesale_microsoft365_formatStatusAndMessage($purchaseResult);
 
-            // Generate data for saving new subscriptions ID as format "productId|subscriptionId"
-            $remoteSubscriptionData = [];
+            // Compare data to check which subscriptions are newly purchased and which ones are re-activated
+            $updateValue = [];
             foreach ($purchaseResult['subscriptionList'] as $eachSubscription) {
-                $remoteSubscriptionData[] = "{$eachSubscription['productId']}|{$eachSubscription['subscriptionId']}";
+                // Check if this product ID already had a subscription and that subscription ID is equal to the API result's subscription ID, then we ignore because they would be the same anyway
+                // Only add the new subscriptions to the custom field values or update the existing records if their subscription IDs are different from each other
+                if ($existingSubscriptions[$eachSubscription['productId']]) {
+                    if ($existingSubscriptions[$eachSubscription['productId']]['subscriptionId'] == $eachSubscription['subscriptionId']) {
+                        continue;
+                    }
+
+                    // Update if IDs are different and then add to array for Database update
+                    $existingSubscriptions[$eachSubscription['productId']]['subscriptionId'] = $eachSubscription['subscriptionId'];
+                    continue;
+                }
+
+                // At this part, it means this new purchase subscription hasn't been created before in the custom fields, we add it as usual
+                $existingSubscriptions[$eachSubscription['productId']] = [
+                    'subscriptionId' => $eachSubscription['subscriptionId'],
+                ];
+            }
+
+            // Generate data for saving new subscriptions ID as format "productId|subscriptionId"
+            foreach ($existingSubscriptions as $queryProductId => $subscriptionId) {
+                $updateValue[] = "{$queryProductId}|{$subscriptionId['subscriptionId']}";
             }
 
             // Retrieve the custom fields of this service
             $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
             // Update records to local database
-            $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
+            $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $updateValue));
         }
     }
 
     // If there is error set during the process, we just put them into the response
     if (!empty($error)) {
-        $returnMessage = FAILED_CHANGE_PLAN . ' Error: ' . implode(', ', $error);
+        // Even in case of error, we still want to see if any part of the process was successful
+        $logResult = array_merge($success, $error);
+        $returnMessage = FAILED_CHANGE_PLAN . ' Error: ' . implode('\n ', $logResult);
 
         // Logs for error
-         logModuleCall(MODULE_NAME, 'ChangePlan', [
+         logModuleCall(MODULE_NAME, 'ChangePackage', [
              'productId' => $params['pid'],
              'serviceId' => $params['serviceid'],
-         ], $error, $returnMessage);
+         ], $logResult, $returnMessage);
 
         return $returnMessage;
     }
 
     // Logs for success
-    logModuleCall(MODULE_NAME, 'ChangePlan', [
+    logModuleCall(MODULE_NAME, 'ChangePackage', [
         'productId' => $params['pid'],
         'serviceId' => $params['serviceid'],
-    ], $success, OK_CHANGE_PLAN . implode(', ', $success));
+    ], $success, OK_CHANGE_PLAN . implode('\n ', $success));
 
-    /** Update new remote subscriptions into WHMCS database */
-
-    return OK_CHANGE_PLAN;
-
+    return SUCCESS;
 }
 
 function synergywholesale_microsoft365_checkAndFilterPackageChange($filteredList, $fullList)
