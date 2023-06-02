@@ -54,6 +54,7 @@ const STATE_MAP = [
 // Database tables
 const WHMCS_HOSTING_TABLE = 'tblhosting';
 const WHMCS_PRODUCT_TABLE = 'tblproducts';
+const WHMCS_CURRENCY_TABLE = 'tblcurrencies';
 
 function synergywholesale_microsoft365_ConfigOptions()
 {
@@ -499,7 +500,11 @@ function synergywholesale_microsoft365_ChangePackage($params)
     $whmcsLocalDb = new LocalDB();
     $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
 
-    // TODO: May need to retrieve current values from SWS API and compare with new records to generate log message
+    // Logs for error
+    logModuleCall(MODULE_NAME, 'See Params Module', [
+        'productId' => $params['pid'],
+        'serviceId' => $params['serviceid'],
+    ], $params['model']['id']);
 
     // Get existing subscriptions (custom fields) and overall subscriptions (config options) from local WHMCS DB
     $existingSubscriptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'changePlan', $params['pid']);
@@ -693,7 +698,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
     if (!empty($error)) {
         // Even in case of error, we still want to see if any part of the process was successful
         $logResult = array_merge($success, $error);
-        $returnMessage = FAILED_CHANGE_PLAN . ' Error: ' . implode('\n ', $logResult);
+        $returnMessage = FAILED_CHANGE_PLAN . ' Error: ' . implode(', ', $logResult);
 
         // Logs for error
          logModuleCall(MODULE_NAME, 'ChangePackage', [
@@ -708,7 +713,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
     logModuleCall(MODULE_NAME, 'ChangePackage', [
         'productId' => $params['pid'],
         'serviceId' => $params['serviceid'],
-    ], $success, OK_CHANGE_PLAN . implode('\n ', $success));
+    ], $success, OK_CHANGE_PLAN . implode(', ', $success));
 
     return SUCCESS;
 }
@@ -740,6 +745,8 @@ function synergywholesale_microsoft365_ClientArea($params)
 
     $currentProductLocal = $whmcsLocalDb->getById(WHMCS_PRODUCT_TABLE, $params['pid']);
     $currentService = $whmcsLocalDb->getById(WHMCS_HOSTING_TABLE, $params['serviceid']);
+    // By default we want to take AUD (id 1), or we can take id of currency from params
+    $currency = $whmcsLocalDb->getById(WHMCS_CURRENCY_TABLE, $params['clientdetails']['currency'] ?? 1);
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
     $configOptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'compare');
 
@@ -750,6 +757,32 @@ function synergywholesale_microsoft365_ClientArea($params)
             'product' => $currentProductLocal,
             'customFields' => $customFields,
             'configOptions' => $configOptions,
+            'server' => [
+                'serverName' => $params['serverhostname'],
+                'ipAddress' => $params['serverip'],
+            ],
+            'domainPassword' => $params['password'],
+            'serviceIsOverdue' => strtotime('now') > strtotime($params['model']['nextduedate']),
+            'billing' => [
+                'Registration Date' => [
+                    'value' => date_format(date_create($params['model']['regdate']), "d M Y"),
+                ],
+
+                'Recurring Amount' => [
+                    'value' => "{$params['model']['amount']} {$currency->code}",
+                ],
+
+                'Billing Cycle' => [
+                    'value' => $params['model']['billingcycle'],
+                ],
+
+                'Next Due Date' => [
+                    'value' => date_format(date_create($params['model']['nextduedate']), "d M Y"),
+                ],
+                'Payment Method' => [
+                    'value' => $params['model']['paymentmethod']
+                ],
+            ]
         ],
     ];
 }
@@ -757,47 +790,14 @@ function synergywholesale_microsoft365_ClientArea($params)
 function synergywholesale_microsoft365_ClientAreaCustomButtonArray()
 {
     return [
-        'Change Domain Prefix' => 'change_domain_prefix',
-        'Change Plan/Package' => 'change_plan_package.tpl',
-        'Office 365 Management Portal' => 'login_ms365_portal',
-        'View Customer Agreement' => 'view_customer_agreement',
-    ];
-}
-
-function synergywholesale_microsoft365_change_domain_prefix($params)
-{
-    return [
-        'templatefile' => 'change_domain_prefix',
-        'vars' => [
-            'serviceId' => $params['serviceid'],
-        ]
+        'Change Plan/Package' => 'change_plan_package',
     ];
 }
 
 function synergywholesale_microsoft365_change_plan_package($params)
 {
     return [
-        'templatefile' => 'change_plan_package.tpl',
-        'vars' => [
-            'serviceId' => $params['serviceid'],
-        ]
-    ];
-}
-
-function synergywholesale_microsoft365_login_ms365_portal($params)
-{
-    return [
-        'templatefile' => 'login_ms365_portal',
-        'vars' => [
-            'serviceId' => $params['serviceid'],
-        ]
-    ];
-}
-
-function synergywholesale_microsoft365_view_customer_agreement($params)
-{
-    return [
-        'templatefile' => 'view_customer_agreement',
+        'templatefile' => 'change_plan_package',
         'vars' => [
             'serviceId' => $params['serviceid'],
         ]
