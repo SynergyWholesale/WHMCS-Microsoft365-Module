@@ -1,6 +1,6 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <div class="service-main-container w-full mb-7">
-    <div class="section-header w-full text-red-600 mb-2 mt-4 font-semibold flex gap-3 items-end">
+    <div class="section-header w-full text-red-600 mb-2 font-semibold flex gap-3 items-end">
         <h2 class=" text-2xl">Billing Information</h2>
         <a class="px-3 py-[6px] no-underline hover:no-underline text-white bg-red-600 rounded-[5px] text-sm hover:bg-red-700 cursor-pointer" href="/subwhmcs/clientarea.php?action=cancel&id={$service->id}">Request Cancellation</a>
     </div>
@@ -71,8 +71,8 @@
 
     <div class="section-header w-full text-blue-600 mb-2 mt-4 font-semibold flex gap-3 items-end">
         <h2 class=" text-2xl">Service's configuration options</h2>
-        <a class="px-3 py-[6px] no-underline hover:no-underline text-white bg-green-600 rounded-[5px] text-sm hover:bg-green-700 cursor-pointer" href="/subwhmcs/clientarea.php?action=productdetails&id={$service->id}&modop=custom&a=change_plan_package&type=package">Change Package</a>
-        <a class="px-3 py-[6px] no-underline hover:no-underline text-white bg-yellow-600 rounded-[5px] text-sm hover:bg-yellow-700 cursor-pointer" href="/subwhmcs/clientarea.php?action=productdetails&id={$service->id}&modop=custom&a=change_plan_package&type=plan">Change Subscriptions</a>
+        <a class="px-3 py-[6px] no-underline hover:no-underline text-white bg-green-600 rounded-[5px] text-sm hover:bg-green-700 cursor-pointer" target="_blank" href="/subwhmcs/upgrade.php?type=package&id={$service->id}">Change Package</a>
+        <a class="px-3 py-[6px] no-underline hover:no-underline text-white bg-yellow-600 rounded-[5px] text-sm hover:bg-yellow-700 cursor-pointer" target="_blank" href="/subwhmcs/upgrade.php?type=configoptions&id={$service->id}">Change Subscriptions</a>
     </div>
     <div class="section-body w-full bg-white px-3 py-3 border-solid border-[0.5px] border-gray-300 rounded-[5px] flex flex-col gap-3">
         {foreach from=$configOptions key=index item=optionDetails}

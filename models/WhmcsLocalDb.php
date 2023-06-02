@@ -34,19 +34,9 @@ class WhmcsLocalDb {
         return $db->get();
     }
 
-    public function create(string $target, array $data)
-    {
-        return DB::table($target)->insert($data);
-    }
-
     public function update(string $target, $id, $data)
     {
         return DB::table($target)->where('id', $id)->update($data);
-    }
-
-    public function delete(string $target, $id)
-    {
-        return DB::table($target)->where('id', $id)->delete();
     }
 
     public function getSubscriptionsForAction($serviceId, $action, $localProductId = '')

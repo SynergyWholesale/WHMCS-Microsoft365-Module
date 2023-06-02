@@ -481,16 +481,6 @@ function synergywholesale_microsoft365_TerminateAccount($params)
 }
 
 /** Perform change plan (subscriptions and quantities) for this tenant (service)
- * STEPS TO PERFORM CHANGE PLAN (OR CHANGE PACKAGE) ACTION
- * 1. First we want to retrieve all current subscriptions that this service has (from custom fields)
- * 2. Then we want to retrieve new details for config options attached to this service (config options may have quantity as 0)
- * 3. We compare each new config option with the current subscriptions (custom fields) and handle differently as:
- *      - If new config option's quantity is 0, AND that config option currently doesn't have any subscriptions, we ignore it
- *      - If all new config option's quantities are 0, that means we terminate all the subscriptions that this tenant currently has
- *      - If new config option's quantity is 0, AND that config option already has subscriptions under this product, we terminate the subscriptions
- *      - if new config option's quantity is > 0, and that config option already has subscriptions under this product, we perform change plan action
- *      - If new config option's quantity is > 0, AND that config option currently doesn't have any subscriptions, we purchase new subscriptions
- * 4. These logics also work perfectly when user changes package and click change plan module command
  * @param $params
  * @return string
  */
@@ -499,12 +489,6 @@ function synergywholesale_microsoft365_ChangePackage($params)
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
     $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
-
-    // Logs for error
-    logModuleCall(MODULE_NAME, 'See Params Module', [
-        'productId' => $params['pid'],
-        'serviceId' => $params['serviceid'],
-    ], $params['model']['id']);
 
     // Get existing subscriptions (custom fields) and overall subscriptions (config options) from local WHMCS DB
     $existingSubscriptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'changePlan', $params['pid']);
@@ -701,10 +685,10 @@ function synergywholesale_microsoft365_ChangePackage($params)
         $returnMessage = FAILED_CHANGE_PLAN . ' Error: ' . implode(', ', $logResult);
 
         // Logs for error
-         logModuleCall(MODULE_NAME, 'ChangePackage', [
-             'productId' => $params['pid'],
-             'serviceId' => $params['serviceid'],
-         ], $logResult, $returnMessage);
+        logModuleCall(MODULE_NAME, 'ChangePackage', [
+            'productId' => $params['pid'],
+            'serviceId' => $params['serviceid'],
+        ], $logResult, $returnMessage);
 
         return $returnMessage;
     }
@@ -745,13 +729,14 @@ function synergywholesale_microsoft365_ClientArea($params)
 
     $currentProductLocal = $whmcsLocalDb->getById(WHMCS_PRODUCT_TABLE, $params['pid']);
     $currentService = $whmcsLocalDb->getById(WHMCS_HOSTING_TABLE, $params['serviceid']);
+
     // By default we want to take AUD (id 1), or we can take id of currency from params
     $currency = $whmcsLocalDb->getById(WHMCS_CURRENCY_TABLE, $params['clientdetails']['currency'] ?? 1);
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
     $configOptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'compare');
 
     return [
-        'tabOverviewReplacementTemplate' => 'templates/clientarea',
+        'tabOverviewReplacementTemplate' => 'clientarea',
         'vars' => [
             'service' => $currentService,
             'product' => $currentProductLocal,
@@ -784,23 +769,6 @@ function synergywholesale_microsoft365_ClientArea($params)
                 ],
             ]
         ],
-    ];
-}
-
-function synergywholesale_microsoft365_ClientAreaCustomButtonArray()
-{
-    return [
-        'Change Plan/Package' => 'change_plan_package',
-    ];
-}
-
-function synergywholesale_microsoft365_change_plan_package($params)
-{
-    return [
-        'templatefile' => 'change_plan_package',
-        'vars' => [
-            'serviceId' => $params['serviceid'],
-        ]
     ];
 }
 
