@@ -834,7 +834,7 @@ function synergywholesale_microsoft365_formatStatusAndMessage($apiResult)
 
     // If 'error' is set, that means the SWS API or LocalDB failed to perform action
     // If not, that means the process was successful, then we return code 'SUCCESS' along with the message (SWS API set it as 'errorMessage' even if successful)
-    return $apiResult['error'] ? "[{$apiResult['status']}] {$apiResult['error']}" : "[SUCCESS] {$apiResult['errorMessage']}.";
+    return $apiResult['error'] ? ($apiResult['status'] ? "[{$apiResult['status']}] {$apiResult['error']}" : "{$apiResult['error']}") : "[SUCCESS] {$apiResult['errorMessage']}.";
 
 }
 
