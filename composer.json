@@ -1,6 +1,6 @@
 {
-    "name": "synergywholesale/whmcs-domains-module",
-    "description": "Synergy Wholesale Registrar Module for WHMCS Billing Automation Platform",
+    "name": "synergywholesale/whmcs-microsoft365-module",
+    "description": "Synergy Wholesale Microsoft 365 Module for WHMCS Billing Automation Platform",
     "type": "project",
     "require-dev": {
         "squizlabs/php_codesniffer": "^3.5",

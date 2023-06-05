@@ -1,35 +1,29 @@
 {
   "schema": "1.0",
-  "type": "whmcs-registrars",
-  "name": "synergywholesaledomains",
+  "type": "whmcs-microsoft365",
+  "name": "synergywholesale_microsoft365",
   "license": "GPLv3",
-  "category": "domains",
+  "category": "others",
   "description": {
-    "name": "Synergy Wholesale Domains v{{VERSION}}",
-    "tagline": "Resell domain names with Australia's Favourite Wholesaler",
+    "name": "Synergy Wholesale Microsoft 365 v{{VERSION}}",
+    "tagline": "Resell your Microsoft Office 365 subscriptions with Australia's Favourite Wholesaler",
     "long": "Not a Synergy Wholesale partner yet? [Become one today|https://synergywholesale.com/become-a-partner/]",
-    "features": [
-      "Full Premium Domain Support",
-      "Domain Registration",
-      "Domain Transfer",
-      "Domain Renewal",
-      "Domain Management",
-      "Update Nameservers",
-      "Configure/Manage Child hosts",
-      "Configure/Manage DNSSEC",
-      "ID Protection",
-      "Update Contacts",
-      "DNS Hosting",
-      "URL Forwarding",
-      "HTTP 301 Redirect",
-      "HTML Frame (Cloaking)",
-      "Email Forwarding",
-      "Advanced Domain/Transfer Sync",
-      "Includes retrospective premium domain identification",
-      "Manual sync button in the admin area",
-      "API Connectivity Tester",
-      "WHOIS.json updater"
-    ]
+    "features": {
+      "admin_area": [
+        "Create New Tenant & Subscription",
+        "Suspend / Unsuspend / Terminate Subscriptions",
+        "Create New Tenant With Every Order",
+        "Change Package / Change Subscriptions",
+        "Accept Microsoft Customer Agreement",
+        "Module and System Logs For Debugging Information"
+      ],
+      "client_area": [
+        "View And Accept Microsoft Customer Agreement",
+        "Customised Template For Client Area -> Product Details",
+        "Module Commands Triggered Accordingly With Client's Actions",
+        "Navigate To Microsoft 365 Management Portal Login"
+      ]
+    }
   },
   "logo": {
     "filename": "logo.png"
@@ -42,8 +36,8 @@
   },
   "authors": [
     {
-      "name": "Cameron Hall, Synergy Wholesale",
-      "homepage": "https:\/\/github.com\/cameronhall\/"
+      "name": "Manh Huy Vo (Eric), Synergy Wholesale",
+      "homepage": "https:\/\/github.com\/manhhuyvo\/"
     }
   ]
 }

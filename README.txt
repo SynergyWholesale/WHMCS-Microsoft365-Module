@@ -1,5 +1,5 @@
 =============================================================
-    Synergy Wholesale WHMCS Domains Module {{VERSION}}
+    Synergy Wholesale WHMCS Microsoft 365 Module {{VERSION}}
     Released: {{RELEASE_DATE}}
 =============================================================
 

@@ -3,8 +3,8 @@ namespace WHMCS\Module\Server\SynergywholesaleMicrosoft365;
 
 class SynergyAPI {
 
-    const API_ENDPOINT = 'https://api-ote.synergywholesale.com';
-    const MODULE_NAME = 'synergywholesale_microsoft365';
+    const API_ENDPOINT = 'https://{{API}}';
+    const MODULE_NAME = '{{MODULE_NAME}}';
     private $client;
     private $resellerId;
     private $apiKey;

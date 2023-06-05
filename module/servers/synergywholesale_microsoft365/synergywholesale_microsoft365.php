@@ -5,10 +5,8 @@ use WHMCS\Module\Server\SynergywholesaleMicrosoft365\SynergyAPI;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\WhmcsLocalDb as LocalDB;
 
 const SUCCESS = 'success';
-const MODULE_NAME = 'synergywholesale_microsoft365';
-const OK_PROVISION = '[SUCCESS] Successfully provisioned new service.';
+const MODULE_NAME = '{{MODULE_NAME}}';
 const TENANT_EXISTED = '[FAILED] This tenant has already been created.';
-const OK_CREATE_TENANT = '[SUCCESS] Successfully created new tenant.';
 const OK_SUSPEND = '[SUCCESS] Successfully suspended service.';
 const OK_UNSUSPEND = '[SUCCESS] Successfully unsuspended service.';
 const OK_TERMINATE = '[SUCCESS] Successfully terminated service.';

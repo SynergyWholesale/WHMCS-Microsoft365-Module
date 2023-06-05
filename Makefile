@@ -1,5 +1,5 @@
 SW_API_HOSTNAME ?= api.synergywholesale.com
-SW_FRONTEND_HOSTNAME ?= manage.synergywholesale.com
+MODULE_NAME ?= synergywholesale_microsoft365
 RELEASE_DATE := $(shell date '+%A, %B %d %Y')
 
 # Make sure sed replace works on Mac OSX
@@ -15,43 +15,33 @@ ifneq ($(.SHELLSTATUS), 0)
 endif
 
 VERSION := $(firstword $(subst -, ,${VERSION}))
-	
-build-assets:
-	npm run-script build
-
-update-whois:
-	curl -s "https://$(SW_FRONTEND_HOSTNAME)/home/whmcs-whois-json" > "resources/domains/whois.json"
 
 replace:
 	sed -i${SED_PARAM} "s/{{VERSION}}/${VERSION}/g" "README.txt"
-	sed -i${SED_PARAM} "s/{{VERSION}}/${VERSION}/g" "modules/registrars/synergywholesaledomains/whmcs.json"
+	sed -i${SED_PARAM} "s/{{VERSION}}/${VERSION}/g" "modules/servers/synergywholesale_microsoft365/whmcs.json"
 	sed -i${SED_PARAM} "s/{{RELEASE_DATE}}/${RELEASE_DATE}/g" "README.txt"
-	sed -i${SED_PARAM} "s/{{VERSION}}/${VERSION:v%=%}/g" "modules/registrars/synergywholesaledomains/hooks.php"
-	sed -i${SED_PARAM} "s/{{VERSION}}/${VERSION:v%=%}/g" "modules/registrars/synergywholesaledomains/synergywholesaledomains.php"
-	sed -i${SED_PARAM} "s/{{API}}/${SW_API_HOSTNAME}/g" "modules/registrars/synergywholesaledomains/synergywholesaledomains.php"
-	sed -i${SED_PARAM} "s/{{FRONTEND}}/${SW_FRONTEND_HOSTNAME}/g" "modules/registrars/synergywholesaledomains/synergywholesaledomains.php"
+	sed -i${SED_PARAM} "s/{{API}}/${SW_API_HOSTNAME}/g" "modules/servers/synergywholesale_microsoft365/models/SynergyAPI.php"
+	sed -i${SED_PARAM} "s/{{MODULE_NAME}}/${MODULE_NAME}/g" "modules/servers/synergywholesale_microsoft365/synergywholesale_microsoft365.php"
+	sed -i${SED_PARAM} "s/{{MODULE_NAME}}/${MODULE_NAME}/g" "modules/servers/synergywholesale_microsoft365/models/SynergyAPI.php"
 
 revert:
-	sed -i${SED_PARAM} "s/${VERSION}/{{VERSION}}/g" "README.txt"
-	sed -i${SED_PARAM} "s/${RELEASE_DATE}/{{RELEASE_DATE}}/g" "README.txt"
-	sed -i${SED_PARAM} "s/${VERSION}/{{VERSION}}/g" "modules/registrars/synergywholesaledomains/whmcs.json"
-	sed -i${SED_PARAM} "s/${VERSION:v%=%}/{{VERSION}}/g" "modules/registrars/synergywholesaledomains/hooks.php"
-	sed -i${SED_PARAM} "s/${VERSION:v%=%}/{{VERSION}}/g" "modules/registrars/synergywholesaledomains/synergywholesaledomains.php"
-	sed -i${SED_PARAM} "s/${SW_API_HOSTNAME}/{{API}}/g" "modules/registrars/synergywholesaledomains/synergywholesaledomains.php"
-	sed -i${SED_PARAM} "s/${SW_FRONTEND_HOSTNAME}/{{FRONTEND}}/g" "modules/registrars/synergywholesaledomains/synergywholesaledomains.php"
+	sed -i${SED_PARAM} "s/{{VERSION}}/${VERSION}/g" "README.txt"
+	sed -i${SED_PARAM} "s/{{VERSION}}/${VERSION}/g" "modules/servers/synergywholesale_microsoft365/whmcs.json"
+	sed -i${SED_PARAM} "s/{{RELEASE_DATE}}/${RELEASE_DATE}/g" "README.txt"
+	sed -i${SED_PARAM} "s/{{API}}/${SW_API_HOSTNAME}/g" "modules/servers/synergywholesale_microsoft365/models/SynergyAPI.php"
+	sed -i${SED_PARAM} "s/{{MODULE_NAME}}/${MODULE_NAME}/g" "modules/servers/synergywholesale_microsoft365/synergywholesale_microsoft365.php"
+	sed -i${SED_PARAM} "s/{{MODULE_NAME}}/${MODULE_NAME}/g" "modules/servers/synergywholesale_microsoft365/models/SynergyAPI.php"
 
 package:
 	make replace
-	zip -r "synergy-wholesale-domains-$(VERSION).zip" . -x  \
+	zip -r "synergy-wholesale-microsoft365-$(VERSION).zip" . -x  \
 	'.DS_Store' '**/.DS_Store' '*.cache' '.git*' '*.md' 'Makefile' 'package.json' 'package-lock.json' \
-	'composer.json' 'composer.lock' '*.xml'  '**/synergywholesaledomains.css' '**/functions.js' \
+	'composer.json' 'composer.lock' '*.xml' \
 	'vendor/*' 'node_modules/*' '.git/*' 'tests/*'
 	make revert
 
 build:
 	test -s node_modules/.bin/minify || npm install
-	make build-assets
-	make update-whois
 	make replace
 	make package
 	make revert
@@ -61,7 +51,6 @@ test:
 	./vendor/bin/phpcs
 	./vendor/bin/phpunit
 	test -s node_modules/.bin/minify || npm install
-	npm run-script check-syntax
 
 tools:
 	npm install
