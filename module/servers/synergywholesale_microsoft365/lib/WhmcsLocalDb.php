@@ -1,9 +1,11 @@
 <?php
+
 namespace WHMCS\Module\Server\SynergywholesaleMicrosoft365;
 
 use WHMCS\Database\Capsule as DB;
 
-class WhmcsLocalDb {
+class WhmcsLocalDb
+{
     private $columns;
     const WHMCS_TENANT_TABLE = 'tblclients';
 
@@ -49,58 +51,57 @@ class WhmcsLocalDb {
             ->get();
 
         if ($configOptions) {
-                switch ($action) {
-                    case 'changePlan':
-                        $customFieldsNeeded = $this->getProductAndServiceCustomFields($localProductId, $serviceId);
+            switch ($action) {
+                case 'changePlan':
+                    $customFieldsNeeded = $this->getProductAndServiceCustomFields($localProductId, $serviceId);
 
-                        // Otherwise if it has more than 1 subscriptions, we loop through and return the list of subscriptions
-                        foreach (explode(', ',$customFieldsNeeded['Remote Subscriptions']['value']) as $eachSubscription) {
+                    // Otherwise if it has more than 1 subscriptions, we loop through and return the list of subscriptions
+                    foreach (explode(', ', $customFieldsNeeded['Remote Subscriptions']['value']) as $eachSubscription) {
+                        $subscriptionId = explode('|', $eachSubscription)[1];
+                        $remoteProductId = explode('|', $eachSubscription)[0];
 
-                            $subscriptionId = explode('|', $eachSubscription)[1];
-                            $remoteProductId = explode('|', $eachSubscription)[0];
+                        // Then we add each subscription record into $return array
+                        $return[$remoteProductId] = [
+                            'subscriptionId' => $subscriptionId,
+                        ];
+                    }
+                    break;
 
-                            // Then we add each subscription record into $return array
-                            $return[$remoteProductId] = [
-                                'subscriptionId' => $subscriptionId,
+                case 'compare':
+                    foreach ($configOptions as $row) {
+                        if (strpos($row->optionname, '|') && $row->qty >= 0) {
+                            $productId = explode('|', $row->optionname)[0];
+
+                            // For compare action, we would want to take all config options even if quantity is 0
+                            $return[] = [
+                                'productId' => $productId,
+                                'productName' => $row->optionname,
+                                'quantity' => $row->qty,
                             ];
                         }
+                    }
                     break;
 
-                    case 'compare':
-                        foreach ($configOptions as $row) {
-                            if (strpos($row->optionname, '|') && $row->qty >= 0) {
-                                $productId = explode('|', $row->optionname)[0];
-
-                                // For compare action, we would want to take all config options even if quantity is 0
-                                $return[] = [
-                                    'productId' => $productId,
-                                    'productName' => $row->optionname,
-                                    'quantity' => $row->qty,
-                                ];
+                case 'create':
+                default:
+                    foreach ($configOptions as $row) {
+                        if (strpos($row->optionname, '|') && $row->qty >= 0) {
+                            $productId = explode('|', $row->optionname)[0];
+                            // If this option has 0 quantity, that means user didn't order it, just skip it
+                            if ($row->qty == 0) {
+                                break;
                             }
-                        }
-                    break;
 
-                    case 'create':
-                    default:
-                        foreach ($configOptions as $row) {
-                            if (strpos($row->optionname, '|') && $row->qty >= 0) {
-                                $productId = explode('|', $row->optionname)[0];
-                                // If this option has 0 quantity, that means user didn't order it, just skip it
-                                if ($row->qty == 0) {
-                                    break;
-                                }
-
-                                // Otherwise if it's greater than 0, we add it to order
-                                $return[] = [
-                                    'productId' => $productId,
-                                    'productName' => $row->optionname,
-                                    'quantity' => $row->qty,
-                                ];
-                            }
+                            // Otherwise if it's greater than 0, we add it to order
+                            $return[] = [
+                                'productId' => $productId,
+                                'productName' => $row->optionname,
+                                'quantity' => $row->qty,
+                            ];
                         }
+                    }
                     break;
-                }
+            }
         }
 
         return $return;
@@ -108,7 +109,6 @@ class WhmcsLocalDb {
 
     public function getProductAndServiceCustomFields($productId, $serviceId)
     {
-
         // Select values of custom fields belong to a service
         $customValues = DB::table('tblcustomfieldsvalues')
             ->select($this->columns)
@@ -131,18 +131,9 @@ class WhmcsLocalDb {
 
         $return = [];
         foreach ($customFields as $row) {
-            if($row->fieldtype == 'checkbox') {
-                $return[$row->fieldname]  = [
-                    'fieldId' => $row->id,
-                    'value' => $fieldValues[$row->id] ?? false,
-                ];
-
-                continue;
-            }
-
             $return[$row->fieldname] = [
                 'fieldId' => $row->id,
-                'value' => $fieldValues[$row->id] ?? '',
+                'value' => $fieldValues[$row->id] ?? ($row->fieldtype == 'checkbox' ? false : ''),
             ];
         }
 
@@ -174,6 +165,6 @@ class WhmcsLocalDb {
                 'updated_at' => $now,
             ]) ? $value : false;
     }
-
 }
+
 ?>

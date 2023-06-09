@@ -83,7 +83,8 @@ function synergywholesale_microsoft365_CreateAccount($params)
     $clientDetails = $params['clientsdetails'];
 
     // Re-map the details to match with Synergy API validation
-    $clientDetails['state'] = STATE_MAP[$params['clientsdetails']['state']] ?? '';
+    // For state, we only validate if country is Australia, otherwise just leave it as is
+    $clientDetails['state'] = $clientDetails['countryname'] == 'Australia' ? (STATE_MAP[$params['clientsdetails']['state']] ?? '') : ($params['clientsdetails']['state'] ?? '');
     $clientDetails['address'] = $params['clientsdetails']['address1'] ?? '';
     $clientDetails['phone'] = $params['clientsdetails']['phonenumberformatted'] ?? '';
     $clientDetails['suburb'] = $params['clientsdetails']['city'] ?? '';
@@ -132,8 +133,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
         $newTenantResult = json_decode(json_encode($newTenantResult), true);
 
         $formatted = synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
-        if ($newTenantResult['error'] || !$newTenantResult['identifier']) {
-
+        if (!empty($newTenantResult['error']) || empty($newTenantResult['identifier'])) {
             // Logs for error
             logModuleCall(MODULE_NAME, 'CreateAccount', $newTenantRequest, [
                 'status' => $newTenantResult['status'],
@@ -177,6 +177,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
             $purchasableOrder[] = $order;
         }
     }
+
     if (empty($purchasableOrder)) {
         return SUCCESS;
     }
@@ -189,7 +190,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
     $newSubscriptionsResult = json_decode(json_encode($newSubscriptionsResult), true);
 
     $formatted = synergywholesale_microsoft365_formatStatusAndMessage($newSubscriptionsResult);
-    if ($newSubscriptionsResult['error'] || !$newSubscriptionsResult['subscriptionList']) {
+    if (!empty($newSubscriptionsResult['error']) || empty($newSubscriptionsResult['subscriptionList'])) {
         // Logs for error
         logModuleCall(MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
             'status' => $newSubscriptionsResult['status'],
@@ -254,7 +255,7 @@ function synergywholesale_microsoft365_SuspendAccount($params)
         // ConvertTo Array
         $thisSubscription = json_decode(json_encode($thisSubscription), true);
 
-        if ($thisSubscription['error'] || !$thisSubscription) {
+        if (!empty($thisSubscription['error']) || empty($thisSubscription)) {
             $formatted = synergywholesale_microsoft365_formatStatusAndMessage($thisSubscription);
             $error[] = "[{$subscriptionId}] {$formatted}";
             continue;
@@ -341,7 +342,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
         // ConvertTo Array
         $thisSubscription = json_decode(json_encode($thisSubscription), true);
 
-        if ($thisSubscription['error'] || !$thisSubscription) {
+        if (!empty($thisSubscription['error']) || empty($thisSubscription)) {
             $formatted = synergywholesale_microsoft365_formatStatusAndMessage($thisSubscription);
             $error[] = "[{$subscriptionId}] {$formatted}";
             continue;
@@ -427,7 +428,7 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         // ConvertTo Array
         $thisSubscription = json_decode(json_encode($thisSubscription), true);
 
-        if ($thisSubscription['error'] || !$thisSubscription) {
+        if (!empty($thisSubscription['error']) || empty($thisSubscription)) {
             $formatted = synergywholesale_microsoft365_formatStatusAndMessage($thisSubscription);
             $error[] = "[{$subscriptionId}] {$formatted}";
             continue;
@@ -528,7 +529,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
         // ConvertTo Array
         $thisSubscription = json_decode(json_encode($thisSubscription), true);
 
-        if ($thisSubscription['error'] || !$thisSubscription) {
+        if (!empty($thisSubscription['error']) || empty($thisSubscription)) {
             $formatted = synergywholesale_microsoft365_formatStatusAndMessage($thisSubscription);
             $error[] = "[CURRENT SUBSCRIPTION] [{$existingSubscriptionId}] {$formatted}";
             continue;
@@ -638,7 +639,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
         // Convert to array
         $purchaseResult = json_decode(json_encode($purchaseResult), true);
 
-        if ($purchaseResult['error'] || !$purchaseResult['subscriptionList']) {
+        if (!empty($purchaseResult['error']) || empty($purchaseResult['subscriptionList'])) {
             $error[] = "[NEW SUBSCRIPTION] " . synergywholesale_microsoft365_formatStatusAndMessage($purchaseResult);
         } else {
             $success[] = "[NEW SUBSCRIPTION] " . synergywholesale_microsoft365_formatStatusAndMessage($purchaseResult);
@@ -698,25 +699,6 @@ function synergywholesale_microsoft365_ChangePackage($params)
     ], $success, OK_CHANGE_PLAN . implode(', ', $success));
 
     return SUCCESS;
-}
-
-function synergywholesale_microsoft365_checkAndFilterPackageChange($filteredList, $fullList)
-{
-    // Get list of Product IDs within the current config group
-    $filteredProductIds = array_keys($filteredList);
-
-    $return = [];
-    foreach ($fullList as $eachProduct) {
-        // If this product is not in the filtered list, that means tenant has switched package, and we need to reset quantity of it to 0
-        if (!in_array($eachProduct['productId'], $filteredProductIds)) {
-            $eachProduct['quantity'] = 0;
-        }
-
-        // If this product is in filtered list, that means we just hold it back in the request data, no need to set quantity to 0
-        $return[] = $eachProduct;
-    }
-
-    return $return;
 }
 
 function synergywholesale_microsoft365_ClientArea($params)
@@ -780,6 +762,25 @@ function synergywholesale_microsoft365_metaData()
 /**
  * CUSTOM FUNCTIONS FOR USING INTERNALLY
  */
+
+function synergywholesale_microsoft365_checkAndFilterPackageChange($filteredList, $fullList)
+{
+    // Get list of Product IDs within the current config group
+    $filteredProductIds = array_keys($filteredList);
+
+    $return = [];
+    foreach ($fullList as $eachProduct) {
+        // If this product is not in the filtered list, that means tenant has switched package, and we need to reset quantity of it to 0
+        if (!in_array($eachProduct['productId'], $filteredProductIds)) {
+            $eachProduct['quantity'] = 0;
+        }
+
+        // If this product is in filtered list, that means we just hold it back in the request data, no need to set quantity to 0
+        $return[] = $eachProduct;
+    }
+
+    return $return;
+}
 
 /** Validate subscription status for provisioning actions */
 function synergywholesale_microsoft365_getSubscriptionStatusInvalid($action, $status, $subscriptionId)
