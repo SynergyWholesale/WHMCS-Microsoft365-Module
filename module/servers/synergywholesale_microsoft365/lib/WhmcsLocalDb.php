@@ -6,39 +6,30 @@ use WHMCS\Database\Capsule as DB;
 
 class WhmcsLocalDb
 {
-    private $columns;
+    // Database tables
     const WHMCS_TENANT_TABLE = 'tblclients';
+    const WHMCS_HOSTING_TABLE = 'tblhosting';
+    const WHMCS_PRODUCT_TABLE = 'tblproducts';
+    const WHMCS_CURRENCY_TABLE = 'tblcurrencies';
 
-    public function __construct(array $columns = [])
-    {
-        // If $columns is set, we only select those columns, otherwise just select all columns
-        $this->columns = !empty($columns) ? implode(',', $columns) : '*';
+    public function updateServiceStatus(int $id, string $status) {
+        return DB::table(self::WHMCS_HOSTING_TABLE)->where('id', $id)->update(['domainstatus' => $status]);
     }
 
-    public function getById(string $target, int $id)
-    {
-        return DB::table($target)->select($this->columns)->where('id', $id)->first();
+    public function getClientById(int $id) {
+        return DB::table(self::WHMCS_TENANT_TABLE)->select('*')->find('id', $id);
     }
 
-    public function getAll(string $target)
-    {
-        return DB::table($target)->select($this->columns)->get();
+    public function getProductById(int $id) {
+        return DB::table(self::WHMCS_PRODUCT_TABLE)->select('*')->find('id', $id);
     }
 
-    public function getByConditions(string $target, array $conditions)
-    {
-        $db = DB::table($target)->select($this->columns);
-
-        foreach ($conditions as $key => $value) {
-            $db = $db->where("{$key}", $value);
-        }
-
-        return $db->get();
+    public function getServiceById(int $id) {
+        return DB::table(self::WHMCS_HOSTING_TABLE)->select('*')->find('id', $id);
     }
 
-    public function update(string $target, $id, $data)
-    {
-        return DB::table($target)->where('id', $id)->update($data);
+    public function getCurrencyById(int $id) {
+        return DB::table(self::WHMCS_CURRENCY_TABLE)->select('*')->find('id', $id);
     }
 
     public function getSubscriptionsForAction($serviceId, $action, $localProductId = '')
@@ -50,58 +41,58 @@ class WhmcsLocalDb
             ->where('tblhostingconfigoptions.relid', '=', $serviceId)
             ->get();
 
-        if ($configOptions) {
-            switch ($action) {
-                case 'changePlan':
-                    $customFieldsNeeded = $this->getProductAndServiceCustomFields($localProductId, $serviceId);
+        if (empty($configOptions)) {
+            return $return;
+        }
 
-                    // Otherwise if it has more than 1 subscriptions, we loop through and return the list of subscriptions
-                    foreach (explode(', ', $customFieldsNeeded['Remote Subscriptions']['value']) as $eachSubscription) {
-                        $subscriptionId = explode('|', $eachSubscription)[1];
-                        $remoteProductId = explode('|', $eachSubscription)[0];
+        switch ($action) {
+            case 'changePlan':
+                $customFieldsNeeded = $this->getProductAndServiceCustomFields($localProductId, $serviceId);
 
-                        // Then we add each subscription record into $return array
-                        $return[$remoteProductId] = [
-                            'subscriptionId' => $subscriptionId,
+                // Otherwise if it has more than 1 subscriptions, we loop through and return the list of subscriptions
+                foreach (explode(', ', $customFieldsNeeded['Remote Subscriptions']['value']) as $eachSubscription) {
+                    $subscriptionId = explode('|', $eachSubscription)[1];
+                    $remoteProductId = explode('|', $eachSubscription)[0];
+
+                    // Then we add each subscription record into $return array
+                    $return[$remoteProductId] = [
+                        'subscriptionId' => $subscriptionId,
+                    ];
+                }
+                break;
+            case 'compare':
+                foreach ($configOptions as $row) {
+                    if (strpos($row->optionname, '|') && $row->qty >= 0) {
+                        $productId = explode('|', $row->optionname)[0];
+
+                        // For compare action, we would want to take all config options even if quantity is 0
+                        $return[] = [
+                            'productId' => $productId,
+                            'productName' => $row->optionname,
+                            'quantity' => $row->qty,
                         ];
                     }
-                    break;
-
-                case 'compare':
-                    foreach ($configOptions as $row) {
-                        if (strpos($row->optionname, '|') && $row->qty >= 0) {
-                            $productId = explode('|', $row->optionname)[0];
-
-                            // For compare action, we would want to take all config options even if quantity is 0
-                            $return[] = [
-                                'productId' => $productId,
-                                'productName' => $row->optionname,
-                                'quantity' => $row->qty,
-                            ];
+                }
+                break;
+            case 'create':
+            default:
+                foreach ($configOptions as $row) {
+                    if (strpos($row->optionname, '|') && $row->qty >= 0) {
+                        $productId = explode('|', $row->optionname)[0];
+                        // If this option has 0 quantity, that means user didn't order it, just skip it
+                        if ($row->qty == 0) {
+                            break;
                         }
-                    }
-                    break;
 
-                case 'create':
-                default:
-                    foreach ($configOptions as $row) {
-                        if (strpos($row->optionname, '|') && $row->qty >= 0) {
-                            $productId = explode('|', $row->optionname)[0];
-                            // If this option has 0 quantity, that means user didn't order it, just skip it
-                            if ($row->qty == 0) {
-                                break;
-                            }
-
-                            // Otherwise if it's greater than 0, we add it to order
-                            $return[] = [
-                                'productId' => $productId,
-                                'productName' => $row->optionname,
-                                'quantity' => $row->qty,
-                            ];
-                        }
+                        // Otherwise if it's greater than 0, we add it to order
+                        $return[] = [
+                            'productId' => $productId,
+                            'productName' => $row->optionname,
+                            'quantity' => $row->qty,
+                        ];
                     }
-                    break;
-            }
+                }
+                break;
         }
 
         return $return;
@@ -111,21 +102,18 @@ class WhmcsLocalDb
     {
         // Select values of custom fields belong to a service
         $customValues = DB::table('tblcustomfieldsvalues')
-            ->select($this->columns)
+            ->select('*')
             ->where('relid', $serviceId)
             ->get();
+
         $fieldValues = [];
-        /* Sample $fieldValues:
-         * ['2' => '12797912'],
-         * ['3' => '123asy231bs'],
-         * */
         foreach ($customValues as $row) {
             $fieldValues[$row->fieldid] = $row->value;
         }
 
         // Select custom fields of a product
         $customFields = DB::table('tblcustomfields')
-            ->select($this->columns)
+            ->select('*')
             ->where('relid', $productId)
             ->get();
 
@@ -141,19 +129,6 @@ class WhmcsLocalDb
         return $return;
     }
 
-    public function createNewCustomFieldValues($fieldId, $serviceId, $value)
-    {
-        $now = date('Y-m-d H:i:s');
-        return DB::table('tblcustomfieldsvalues')
-            ->insert([
-                'fieldid' => $fieldId,
-                'relid' => $serviceId,
-                'value' => $value,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]) ? $value : false;
-    }
-
     public function updateCustomFieldValues($fieldId, $serviceId, $value)
     {
         $now = date('Y-m-d H:i:s');
@@ -166,5 +141,3 @@ class WhmcsLocalDb
             ]) ? $value : false;
     }
 }
-
-?>

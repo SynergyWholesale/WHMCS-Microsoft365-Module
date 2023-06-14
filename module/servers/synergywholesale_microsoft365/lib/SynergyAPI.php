@@ -15,10 +15,6 @@ class SynergyAPI
 
     public function __construct($resellerId, $apiKey)
     {
-        if (empty($resellerId) || empty($apiKey)) {
-            return false;
-        }
-
         try {
             $this->resellerId = $resellerId;
             $this->apiKey = $apiKey;
@@ -36,8 +32,6 @@ class SynergyAPI
                     'exceptions' => true
                 ]
             );
-
-            return $this->client;
         } catch (SoapFault $e) {
             logModuleCall(self::MODULE_NAME, 'createSoapClient', $this->auth, [
                 'exception' => get_class($e),
@@ -45,8 +39,6 @@ class SynergyAPI
                 'trace' => $e->getTraceAsString()
             ]);
         }
-
-        return false;
     }
 
     /**
@@ -55,8 +47,10 @@ class SynergyAPI
      * @param $data (body request of the API call)
      * @return array|mixed|string
      */
-    private function sendRequest($action, $request)
+    private function sendRequest($action, $data)
     {
+        $request = array_merge($data, $this->auth);
+
         try {
             $response = $this->client->{$action}($request);
         } catch (SoapFault $e) {
@@ -76,90 +70,55 @@ class SynergyAPI
         return $response;
     }
 
-    /**
-     * Get details of a model by its ID
-     * @param $action (name of function we want to call in SWS API)
-     * @param $id (ID of the model we are targeting)
-     * @return array|bool
-     */
-    public function getById($action, $id)
+    public function getTenantDetails(int $id)
     {
-        if (empty($id) || empty($action)) {
+        if (empty($id)) {
             return [
-                'error' => 'Cannot query with empty input value(s).',
+                'error' => 'Cannot query with empty input value.',
             ];
         }
 
-        // Prepare data for sending request
-        $request = array_merge([
-            'identifier' => $id,
-        ], $this->auth);
-
-        return $this->sendRequest($action, $request);
+        return $this->sendRequest('subscriptionGetClient', ['identifier' => $id]);
     }
 
-    /**
-     * Get list of all objects of a model from SWS API
-     * @param $action
-     * @return mixed
-     */
-    public function getAll($target, $action, $referenceId = null)
+    public function getSubscriptionDetails(int $id)
     {
-        if (empty($action)) {
+        if (empty($id)) {
             return [
-                'error' => 'The action input is empty.',
+                'error' => 'Cannot query with empty input value.',
             ];
         }
 
-        // If we pass through an ID, it means we want to get the full list of subscriptions belong to a tenant
-        switch ($target) {
-            case Subscription::SWS_SUBSCRIPTION_TARGET:
-                if (!$referenceId) {
-                    return [
-                        'error' => 'The required tenant ID field is empty',
-                    ];
-                }
-
-                $request = array_merge([
-                    'identifier' => $referenceId,
-                ], $this->auth);
-                break;
-
-            case Tenant::SWS_TENANT_TARGET:
-            default:
-                $request = $this->auth;
-                break;
-        }
-
-        return $this->sendRequest($action, $request);
+        return $this->sendRequest('subscriptionGetDetails', ['identifier' => $id]);
     }
 
-    /**
-     * Get list of objects by some conditions set in the array $conditions
-     * @param $action
-     * @param $conditions
-     * @return array|mixed|string
-     */
-    public function getByConditions($action, $conditions)
+    public function suspendSubscription(int $id)
     {
-        return $this->sendRequest($action, array_merge($conditions, $this->auth));
+        return $this->sendRequest('subscriptionSuspend', ['identifier' => $id]);
     }
 
-    public function provisioningActions($action, $id)
+    public function unsuspendSubscription(int $id)
     {
-        $request = array_merge([
-            'identifier' => $id,
-        ], $this->auth);
-
-        return $this->sendRequest($action, $request);
+        return $this->sendRequest('subscriptionUnsuspend', ['identifier' => $id]);
     }
 
-    public function crudOperations($action, $data)
+    public function terminateSubscription(int $id)
     {
-        $data = array_merge($data, $this->auth);
+        return $this->sendRequest('subscriptionTerminate', ['identifier' => $id]);
+    }
 
-        return $this->sendRequest($action, $data);
+    public function createClient($data)
+    {
+        return $this->sendRequest('subscriptionCreateClient', $data);
+    }
+
+    public function purchaseSubscription($data)
+    {
+        return $this->sendRequest('subscriptionPurchase', $data);
+    }
+
+    public function updateSubscriptionQuantity($data)
+    {
+        return $this->sendRequest('subscriptionUpdateQuantity', $data);
     }
 }
-
-?>

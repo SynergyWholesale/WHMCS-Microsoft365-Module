@@ -16,6 +16,7 @@ const FAILED_UNSUSPEND_LIST = '[FAILED] Failed to unsuspend the following subscr
 const FAILED_TERMINATE_LIST = '[FAILED] Failed to terminate the following subscriptions: ';
 const FAILED_CHANGE_PLAN = '[FAILED] Failed to change plan for service.';
 const FAILED_INVALID_CONFIGURATION = '[FAILED] Unable to perform action due to invalid configuration.';
+const FAILED_MISSING_MODULE_CONFIGS = '[FAILED] Synergy Wholesale Reseller ID or API Key is missing.';
 const STATUS_DELETED = 'Deleted';
 const STATUS_CANCELLED = 'Cancelled';
 const STATUS_ACTIVE = 'Active';
@@ -49,11 +50,6 @@ const STATE_MAP = [
     'Western Australia' => 'WA',
 ];
 
-// Database tables
-const WHMCS_HOSTING_TABLE = 'tblhosting';
-const WHMCS_PRODUCT_TABLE = 'tblproducts';
-const WHMCS_CURRENCY_TABLE = 'tblcurrencies';
-
 function synergywholesale_microsoft365_ConfigOptions()
 {
     return [
@@ -75,6 +71,10 @@ function synergywholesale_microsoft365_ConfigOptions()
 /** Create new tenant and subscriptions in SWS API */
 function synergywholesale_microsoft365_CreateAccount($params)
 {
+    if (empty($params['configoption1']) || empty($params['configoption2'])) {
+        return FAILED_MISSING_MODULE_CONFIGS;
+    }
+
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
     $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
@@ -93,14 +93,13 @@ function synergywholesale_microsoft365_CreateAccount($params)
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
 
     // Get Client Details
-    $clientObj = $whmcsLocalDb->getById(LocalDB::WHMCS_TENANT_TABLE, $params['userid']);
+    $clientObj = $whmcsLocalDb->getClientById($params['userid']);
 
     /**
      * VALIDATE IF THIS TENANT HAS BEEN CREATED IN SYNERGY
      */
-
     if (!empty($customFields['Remote Tenant ID']['value'])) {
-        $remoteTenant = $synergyAPI->getById('subscriptionGetClient', $customFields['Remote Tenant ID']['value']);
+        $remoteTenant = $synergyAPI->getTenantDetails($customFields['Remote Tenant ID']['value']);
 
         if ($remoteTenant) {
             // ConvertTo Array
@@ -114,7 +113,6 @@ function synergywholesale_microsoft365_CreateAccount($params)
 
             $tenantId = $customFields['Remote Tenant ID']['value'];
         }
-
     } else {
         /**
          * START CREATE NEW TENANT IN SYNERGY
@@ -128,7 +126,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
         // Format and merge array for request
         $newTenantRequest = array_merge($clientDetails, $otherData);
         // Send request to SWS API
-        $newTenantResult = $synergyAPI->crudOperations('subscriptionCreateClient', $newTenantRequest);
+        $newTenantResult = $synergyAPI->createClient($newTenantRequest);
         // ConvertTo Array
         $newTenantResult = json_decode(json_encode($newTenantResult), true);
 
@@ -185,7 +183,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
     //Format and merge array for request
     $newSubscriptionsRequest = array_merge(['subscriptionOrder' => $purchasableOrder], ['identifier' => $tenantId]);
     // Send request to SWS API
-    $newSubscriptionsResult = $synergyAPI->crudOperations('subscriptionPurchase', $newSubscriptionsRequest);
+    $newSubscriptionsResult = $synergyAPI->purchaseSubscription($newSubscriptionsRequest);
     // ConvertTo Array
     $newSubscriptionsResult = json_decode(json_encode($newSubscriptionsResult), true);
 
@@ -203,7 +201,6 @@ function synergywholesale_microsoft365_CreateAccount($params)
     /**
      * INSERT OR UPDATE NEW REMOTE VALUES TO LOCAL WHMCS DATABASE (Remote Subscriptions)
      */
-
     // Generate data for saving new subscriptions ID as format "productId|subscriptionId"
     $remoteSubscriptionData = [];
     foreach ($newSubscriptionsResult['subscriptionList'] as $eachSubscription) {
@@ -225,6 +222,10 @@ function synergywholesale_microsoft365_CreateAccount($params)
 /** Suspend service and subscriptions in SWS API */
 function synergywholesale_microsoft365_SuspendAccount($params)
 {
+    if (empty($params['configoption1']) || empty($params['configoption2'])) {
+        return FAILED_MISSING_MODULE_CONFIGS;
+    }
+
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
     $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
@@ -251,7 +252,7 @@ function synergywholesale_microsoft365_SuspendAccount($params)
         $subscriptionId = explode('|', $eachSubscription)[1] ?? '';
 
         // Check if subscription is currently in Active or Pending, if NOT, then skip it
-        $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $subscriptionId);
+        $thisSubscription = $synergyAPI->getSubscriptionDetails($subscriptionId);
         // ConvertTo Array
         $thisSubscription = json_decode(json_encode($thisSubscription), true);
 
@@ -269,7 +270,7 @@ function synergywholesale_microsoft365_SuspendAccount($params)
         }
 
         // Send request for provisioning and format the response for display
-        $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionSuspend', $subscriptionId)), true);
+        $actionResult = json_decode(json_encode($synergyAPI->suspendSubscription($subscriptionId)), true);
         $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
@@ -296,7 +297,7 @@ function synergywholesale_microsoft365_SuspendAccount($params)
     }
 
     // Update service status in local WHMCS
-    $whmcsLocalDb->update(WHMCS_HOSTING_TABLE, $params['serviceid'], ['domainstatus' => STATUS_SUSPENDED]);
+    $whmcsLocalDb->updateServiceStatus($params['serviceid'], STATUS_SUSPENDED);
 
     // Logs for success
     logModuleCall(MODULE_NAME, 'SuspendAccount', [
@@ -310,6 +311,10 @@ function synergywholesale_microsoft365_SuspendAccount($params)
 /** Unsuspend service and subscriptions in SWS API */
 function synergywholesale_microsoft365_UnsuspendAccount($params)
 {
+    if (empty($params['configoption1']) || empty($params['configoption2'])) {
+        return FAILED_MISSING_MODULE_CONFIGS;
+    }
+
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
     $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
@@ -338,7 +343,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
         // Check if subscription is currently in Active or Pending, then skip it
         // If it is currently  terminated, then skip it
         // We only unsuspend if it is suspended
-        $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $subscriptionId);
+        $thisSubscription = $synergyAPI->getSubscriptionDetails($subscriptionId);
         // ConvertTo Array
         $thisSubscription = json_decode(json_encode($thisSubscription), true);
 
@@ -356,7 +361,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
         }
 
         // Send request for provisioning and format the response for display
-        $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionUnsuspend', $subscriptionId)), true);
+        $actionResult = json_decode(json_encode($synergyAPI->unsuspendSubscription($subscriptionId)), true);
         $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
@@ -383,7 +388,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
     }
 
     // Update service status in local WHMCS
-    $whmcsLocalDb->update(WHMCS_HOSTING_TABLE, $params['serviceid'], ['domainstatus' => STATUS_ACTIVE]);
+    $whmcsLocalDb->updateServiceStatus($params['serviceid'], STATUS_ACTIVE);
 
     // Logs for success
     logModuleCall(MODULE_NAME, 'UnsuspendAccount', [
@@ -397,6 +402,10 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
 /** Terminate service and subscriptions in SWS API */
 function synergywholesale_microsoft365_TerminateAccount($params)
 {
+    if (empty($params['configoption1']) || empty($params['configoption2'])) {
+        return FAILED_MISSING_MODULE_CONFIGS;
+    }
+
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
     $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
@@ -424,7 +433,7 @@ function synergywholesale_microsoft365_TerminateAccount($params)
 
         // Check if subscription is currently in terminated, then skip it
         // If it is currently  active stage or suspended stage, then we terminate
-        $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $subscriptionId);
+        $thisSubscription = $synergyAPI->getSubscriptionDetails($subscriptionId);
         // ConvertTo Array
         $thisSubscription = json_decode(json_encode($thisSubscription), true);
 
@@ -442,7 +451,7 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         }
 
         // Send request for provisioning and format the response for display
-        $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionTerminate', $subscriptionId)), true);
+        $actionResult = json_decode(json_encode($synergyAPI->terminateSubscription($subscriptionId)), true);
         $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
         //NOTE: We don't need to  update subscription's status in local WHMCS database as we only store the required id columns
 
@@ -450,7 +459,6 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         if (!is_numeric(strpos($formattedMessage, '[SUCCESS]'))) {
             $error[] = "[{$subscriptionId}] {$formattedMessage}";
         }
-
     }
 
     // if $error array is not empty, that means one or more subscriptions couldn't be suspended
@@ -467,7 +475,7 @@ function synergywholesale_microsoft365_TerminateAccount($params)
     }
 
     // Update service status in local WHMCS
-    $whmcsLocalDb->update(WHMCS_HOSTING_TABLE, $params['serviceid'], ['domainstatus' => STATUS_CANCELLED]);
+    $whmcsLocalDb->updateServiceStatus($params['serviceid'], STATUS_CANCELLED);
 
     // Logs for success
     logModuleCall(MODULE_NAME, 'TerminateAccount', [
@@ -476,7 +484,6 @@ function synergywholesale_microsoft365_TerminateAccount($params)
     ], $success, OK_TERMINATE);
 
     return SUCCESS;
-
 }
 
 /** Perform change plan (subscriptions and quantities) for this tenant (service)
@@ -485,6 +492,10 @@ function synergywholesale_microsoft365_TerminateAccount($params)
  */
 function synergywholesale_microsoft365_ChangePackage($params)
 {
+    if (empty($params['configoption1']) || empty($params['configoption2'])) {
+        return FAILED_MISSING_MODULE_CONFIGS;
+    }
+
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
     $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
@@ -525,7 +536,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
         $existingSubscriptionId = $existingSubscriptions[$productId]['subscriptionId'];
 
         // Get current details of subscription from Synergy API
-        $thisSubscription = $synergyAPI->getById('subscriptionGetDetails', $existingSubscriptionId);
+        $thisSubscription = $synergyAPI->getSubscriptionDetails($existingSubscriptionId);
         // ConvertTo Array
         $thisSubscription = json_decode(json_encode($thisSubscription), true);
 
@@ -553,7 +564,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
             }
 
             // If error status is NULL, then we terminate this subscription
-            $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionTerminate', $existingSubscriptionId)), true);
+            $actionResult = json_decode(json_encode($synergyAPI->terminateSubscription($existingSubscriptionId)), true);
             $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
 
             // This means the API request wasn't successful, add this ID to $error array for displaying message
@@ -578,7 +589,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
             // If service is suspended or cancelled, we unsuspend and update seat
             case STATUS_SUSPENDED:
             case STATUS_CANCELLED:
-                $actionResult = json_decode(json_encode($synergyAPI->provisioningActions('subscriptionUnsuspend', $existingSubscriptionId)), true);
+                $actionResult = json_decode(json_encode($synergyAPI->unsuspendSubscription($existingSubscriptionId)), true);
                 $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
 
                 // This means the API request wasn't successful, add this ID to $error array for displaying message
@@ -592,13 +603,11 @@ function synergywholesale_microsoft365_ChangePackage($params)
                 // After unsuspend the subscription, we would proceed to Update Quantity part below the switch
                 $updateQuantity = true;
                 break;
-
             // if service is active or pending, we can just update seat accordingly
             case STATUS_ACTIVE:
             case STATUS_PENDING:
                 $updateQuantity = true;
                 break;
-
             // If service is already deleted, we purchase new subscription for that product ID
             // NOTE: In this case when purchase new subscription for that pre-own product, Synergy would re-activate the old subscription, so we don't have to delete or update the subscription ID in custom fields
             case STATUS_DELETED:
@@ -614,7 +623,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
                 continue;
             }
 
-            $actionResult = json_decode(json_encode($synergyAPI->crudOperations('subscriptionUpdateQuantity', [
+            $actionResult = json_decode(json_encode($synergyAPI->updateSubscriptionQuantity([
                 'identifier' => $existingSubscriptionId,
                 'quantity' => $row['quantity'],
             ])), true);
@@ -635,7 +644,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
         $tenantId = $params['customfields']['Remote Tenant ID'];
 
         // Send API request to SWS for purchasing new subscription(s)
-        $purchaseResult = $synergyAPI->crudOperations('subscriptionPurchase', array_merge(['subscriptionOrder' => $subscriptionsToCreate], ['identifier' => $tenantId]));
+        $purchaseResult = $synergyAPI->purchaseSubscription(array_merge(['subscriptionOrder' => $subscriptionsToCreate], ['identifier' => $tenantId]));
         // Convert to array
         $purchaseResult = json_decode(json_encode($purchaseResult), true);
 
@@ -703,15 +712,19 @@ function synergywholesale_microsoft365_ChangePackage($params)
 
 function synergywholesale_microsoft365_ClientArea($params)
 {
+    if (empty($params['configoption1']) || empty($params['configoption2'])) {
+        return FAILED_MISSING_MODULE_CONFIGS;
+    }
+
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
     $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
 
-    $currentProductLocal = $whmcsLocalDb->getById(WHMCS_PRODUCT_TABLE, $params['pid']);
-    $currentService = $whmcsLocalDb->getById(WHMCS_HOSTING_TABLE, $params['serviceid']);
+    $currentProductLocal = $whmcsLocalDb->getProductById($params['pid']);
+    $currentService = $whmcsLocalDb->getServiceById($params['serviceid']);
 
     // By default we want to take AUD (id 1), or we can take id of currency from params
-    $currency = $whmcsLocalDb->getById(WHMCS_CURRENCY_TABLE, $params['clientdetails']['currency'] ?? 1);
+    $currency = $whmcsLocalDb->getCurrencyById($params['clientdetails']['currency'] ?? 1);
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
     $configOptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'compare');
 
@@ -838,5 +851,3 @@ function synergywholesale_microsoft365_formatStatusAndMessage($apiResult)
     return $apiResult['error'] ? ($apiResult['status'] ? "[{$apiResult['status']}] {$apiResult['error']}" : "{$apiResult['error']}") : "[SUCCESS] {$apiResult['errorMessage']}.";
 
 }
-
-?>
