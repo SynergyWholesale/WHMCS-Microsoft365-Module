@@ -7,17 +7,12 @@ use SoapClient;
 class SynergyAPI
 {
     const API_ENDPOINT = 'https://{{API}}';
-    const MODULE_NAME = '{{MODULE_NAME}}';
     private $client;
-    private $resellerId;
-    private $apiKey;
     private $auth = [];
 
     public function __construct($resellerId, $apiKey)
     {
         try {
-            $this->resellerId = $resellerId;
-            $this->apiKey = $apiKey;
             $this->auth = [
                 'resellerID' => $resellerId,
                 'apiKey' => $apiKey,
@@ -33,7 +28,7 @@ class SynergyAPI
                 ]
             );
         } catch (SoapFault $e) {
-            logModuleCall(self::MODULE_NAME, 'createSoapClient', $this->auth, [
+            logModuleCall(ModuleEnums::MODULE_NAME, 'createSoapClient', $this->auth, [
                 'exception' => get_class($e),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()

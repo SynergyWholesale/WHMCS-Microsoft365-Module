@@ -3,38 +3,33 @@
 namespace WHMCS\Module\Server\SynergywholesaleMicrosoft365;
 
 use WHMCS\Database\Capsule as DB;
+use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ModuleEnums as ModuleEnums;
 
 class WhmcsLocalDb
 {
-    // Database tables
-    const WHMCS_TENANT_TABLE = 'tblclients';
-    const WHMCS_HOSTING_TABLE = 'tblhosting';
-    const WHMCS_PRODUCT_TABLE = 'tblproducts';
-    const WHMCS_CURRENCY_TABLE = 'tblcurrencies';
-
     public function updateServiceStatus(int $id, string $status)
     {
-        return DB::table(self::WHMCS_HOSTING_TABLE)->where('id', $id)->update(['domainstatus' => $status]);
+        return DB::table(ModuleEnums::WHMCS_HOSTING_TABLE)->where('id', $id)->update(['domainstatus' => $status]);
     }
 
     public function getClientById(int $id)
     {
-        return DB::table(self::WHMCS_TENANT_TABLE)->find($id);
+        return DB::table(ModuleEnums::WHMCS_TENANT_TABLE)->find($id);
     }
 
     public function getProductById(int $id)
     {
-        return DB::table(self::WHMCS_PRODUCT_TABLE)->find($id);
+        return DB::table(ModuleEnums::WHMCS_PRODUCT_TABLE)->find($id);
     }
 
     public function getServiceById(int $id)
     {
-        return DB::table(self::WHMCS_HOSTING_TABLE)->find($id);
+        return DB::table(ModuleEnums::WHMCS_HOSTING_TABLE)->find($id);
     }
 
     public function getCurrencyById(int $id)
     {
-        return DB::table(self::WHMCS_CURRENCY_TABLE)->find( $id);
+        return DB::table(ModuleEnums::WHMCS_CURRENCY_TABLE)->find( $id);
     }
 
     public function getSubscriptionsForAction($serviceId, $action, $localProductId = '')

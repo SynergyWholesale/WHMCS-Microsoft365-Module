@@ -20,17 +20,15 @@ replace:
 	sed -i${SED_PARAM} "s/{{VERSION}}/${VERSION}/g" "README.txt"
 	sed -i${SED_PARAM} "s/{{VERSION}}/${VERSION}/g" "modules/servers/synergywholesale_microsoft365/whmcs.json"
 	sed -i${SED_PARAM} "s/{{RELEASE_DATE}}/${RELEASE_DATE}/g" "README.txt"
-	sed -i${SED_PARAM} "s/{{API}}/${SW_API_HOSTNAME}/g" "modules/servers/synergywholesale_microsoft365/models/SynergyAPI.php"
-	sed -i${SED_PARAM} "s/{{MODULE_NAME}}/${MODULE_NAME}/g" "modules/servers/synergywholesale_microsoft365/synergywholesale_microsoft365.php"
-	sed -i${SED_PARAM} "s/{{MODULE_NAME}}/${MODULE_NAME}/g" "modules/servers/synergywholesale_microsoft365/models/SynergyAPI.php"
+	sed -i${SED_PARAM} "s/{{API}}/${SW_API_HOSTNAME}/g" "modules/servers/synergywholesale_microsoft365/lib/SynergyAPI.php"
+	sed -i${SED_PARAM} "s/{{MODULE_NAME}}/${MODULE_NAME}/g" "modules/servers/synergywholesale_microsoft365/lib/ModuleEnums.php"
 
 revert:
 	sed -i${SED_PARAM} "s/{{VERSION}}/${VERSION}/g" "README.txt"
 	sed -i${SED_PARAM} "s/{{VERSION}}/${VERSION}/g" "modules/servers/synergywholesale_microsoft365/whmcs.json"
 	sed -i${SED_PARAM} "s/{{RELEASE_DATE}}/${RELEASE_DATE}/g" "README.txt"
-	sed -i${SED_PARAM} "s/{{API}}/${SW_API_HOSTNAME}/g" "modules/servers/synergywholesale_microsoft365/models/SynergyAPI.php"
-	sed -i${SED_PARAM} "s/{{MODULE_NAME}}/${MODULE_NAME}/g" "modules/servers/synergywholesale_microsoft365/synergywholesale_microsoft365.php"
-	sed -i${SED_PARAM} "s/{{MODULE_NAME}}/${MODULE_NAME}/g" "modules/servers/synergywholesale_microsoft365/models/SynergyAPI.php"
+	sed -i${SED_PARAM} "s/{{API}}/${SW_API_HOSTNAME}/g" "modules/servers/synergywholesale_microsoft365/lib/SynergyAPI.php"
+	sed -i${SED_PARAM} "s/{{MODULE_NAME}}/${MODULE_NAME}/g" "modules/servers/synergywholesale_microsoft365/lib/ModuleEnums.php"
 
 package:
 	make replace

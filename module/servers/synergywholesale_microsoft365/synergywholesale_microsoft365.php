@@ -1,54 +1,10 @@
 <?php
-use WHMCS\Database\Capsule as DB;
 
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\SynergyAPI;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\WhmcsLocalDb as LocalDB;
-
-const SUCCESS = 'success';
-const MODULE_NAME = '{{MODULE_NAME}}';
-const TENANT_EXISTED = '[FAILED] This tenant has already been created.';
-const OK_SUSPEND = '[SUCCESS] Successfully suspended service.';
-const OK_UNSUSPEND = '[SUCCESS] Successfully unsuspended service.';
-const OK_TERMINATE = '[SUCCESS] Successfully terminated service.';
-const OK_CHANGE_PLAN = '[SUCCESS] Successfully changed plan for service.';
-const FAILED_SUSPEND_LIST = '[FAILED] Failed to suspend the following subscriptions: ';
-const FAILED_UNSUSPEND_LIST = '[FAILED] Failed to unsuspend the following subscriptions: ';
-const FAILED_TERMINATE_LIST = '[FAILED] Failed to terminate the following subscriptions: ';
-const FAILED_CHANGE_PLAN = '[FAILED] Failed to change plan for service.';
-const FAILED_INVALID_CONFIGURATION = '[FAILED] Unable to perform action due to invalid configuration.';
-const FAILED_MISSING_MODULE_CONFIGS = '[FAILED] Synergy Wholesale Reseller ID or API Key is missing.';
-const STATUS_DELETED = 'Deleted';
-const STATUS_CANCELLED = 'Cancelled';
-const STATUS_ACTIVE = 'Active';
-const STATUS_SUSPENDED = 'Suspended';
-const STATUS_STAFF_SUSPENDED = 'Suspended By Staff';
-const STATUS_PENDING = 'Pending';
-const ACTIVE_STATUS = [
-    STATUS_ACTIVE,
-    STATUS_PENDING,
-];
-const SUSPENDED_STATUS = [
-    STATUS_SUSPENDED,
-    STATUS_STAFF_SUSPENDED,
-    STATUS_DELETED,
-    STATUS_CANCELLED,
-];
-
-const TERMINATED_STATUS = [
-    STATUS_DELETED,
-    STATUS_CANCELLED,
-];
-
-const STATE_MAP = [
-    'Australian Capital Territory' => 'ACT',
-    'New South Wales' => 'NSW',
-    'Northern Territory' => 'NT',
-    'Queensland' => 'QLD',
-    'South Australia' => 'SA',
-    'Tasmania' => 'TAS',
-    'Victoria' => 'VIC',
-    'Western Australia' => 'WA',
-];
+use WHMCS\Module\Server\SynergywholesaleMicrosoft365\Messages;
+use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ModuleEnums;
+use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ServiceStatuses as Status;
 
 function synergywholesale_microsoft365_ConfigOptions()
 {
@@ -72,7 +28,7 @@ function synergywholesale_microsoft365_ConfigOptions()
 function synergywholesale_microsoft365_CreateAccount($params)
 {
     if (empty($params['configoption1']) || empty($params['configoption2'])) {
-        return FAILED_MISSING_MODULE_CONFIGS;
+        return Messages::FAILED_MISSING_MODULE_CONFIGS;
     }
 
     // New instance of local WHMCS database and Synergy API
@@ -84,7 +40,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
 
     // Re-map the details to match with Synergy API validation
     // For state, we only validate if country is Australia, otherwise just leave it as is
-    $clientDetails['state'] = $clientDetails['countryname'] == 'Australia' ? (STATE_MAP[$params['clientsdetails']['state']] ?? '') : ($params['clientsdetails']['state'] ?? '');
+    $clientDetails['state'] = $clientDetails['countryname'] == 'Australia' ? (ModuleEnums::STATE_MAP[$params['clientsdetails']['state']] ?? '') : ($params['clientsdetails']['state'] ?? '');
     $clientDetails['address'] = $params['clientsdetails']['address1'] ?? '';
     $clientDetails['phone'] = $params['clientsdetails']['phonenumberformatted'] ?? '';
     $clientDetails['suburb'] = $params['clientsdetails']['city'] ?? '';
@@ -106,10 +62,10 @@ function synergywholesale_microsoft365_CreateAccount($params)
             $remoteTenant = json_decode(json_encode($remoteTenant), true);
 
             // Logs for error
-            logModuleCall(MODULE_NAME, 'CreateAccount', $customFields['Remote Tenant ID']['value'], [
+            logModuleCall(ModuleEnums::MODULE_NAME, 'CreateAccount', $customFields['Remote Tenant ID']['value'], [
                 'status' => $remoteTenant['status'],
                 'message' => $remoteTenant['errorMessage'],
-            ], TENANT_EXISTED);
+            ], Messages::TENANT_EXISTED);
 
             $tenantId = $customFields['Remote Tenant ID']['value'];
         }
@@ -133,7 +89,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
         $formatted = synergywholesale_microsoft365_formatStatusAndMessage($newTenantResult);
         if (!empty($newTenantResult['error']) || empty($newTenantResult['identifier'])) {
             // Logs for error
-            logModuleCall(MODULE_NAME, 'CreateAccount', $newTenantRequest, [
+            logModuleCall(ModuleEnums::MODULE_NAME, 'CreateAccount', $newTenantRequest, [
                 'status' => $newTenantResult['status'],
                 'error' => $newTenantResult['error'],
             ], $formatted);
@@ -146,7 +102,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
         $whmcsLocalDb->updateCustomFieldValues($customFields['Domain Prefix']['fieldId'], $params['serviceid'], $newTenantResult['domainPrefix']);
 
         // Logs for successful
-        logModuleCall(MODULE_NAME, 'CreateAccount', $newTenantRequest, [
+        logModuleCall(ModuleEnums::MODULE_NAME, 'CreateAccount', $newTenantRequest, [
             'status' => $newTenantResult['status'],
             'message' => $newTenantResult['errorMessage'],
         ], $formatted);
@@ -160,10 +116,10 @@ function synergywholesale_microsoft365_CreateAccount($params)
     // Get and organise subscriptionOrder request for SWS API
     $subscriptionOrder = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'create');
     if (empty($subscriptionOrder)) {
-        $formatted = synergywholesale_microsoft365_formatStatusAndMessage(['error' => FAILED_INVALID_CONFIGURATION]);
+        $formatted = synergywholesale_microsoft365_formatStatusAndMessage(['error' => Messages::FAILED_INVALID_CONFIGURATION]);
 
         // Logs for error
-        logModuleCall(MODULE_NAME, 'CreateAccount', ['serviceId' => $params['serviceid']], ['error' => FAILED_INVALID_CONFIGURATION], $formatted);
+        logModuleCall(ModuleEnums::MODULE_NAME, 'CreateAccount', ['serviceId' => $params['serviceid']], ['error' => Messages::FAILED_INVALID_CONFIGURATION], $formatted);
 
         return $formatted;
     }
@@ -177,7 +133,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
     }
 
     if (empty($purchasableOrder)) {
-        return SUCCESS;
+        return Messages::SUCCESS;
     }
 
     //Format and merge array for request
@@ -190,7 +146,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
     $formatted = synergywholesale_microsoft365_formatStatusAndMessage($newSubscriptionsResult);
     if (!empty($newSubscriptionsResult['error']) || empty($newSubscriptionsResult['subscriptionList'])) {
         // Logs for error
-        logModuleCall(MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
+        logModuleCall(ModuleEnums::MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
             'status' => $newSubscriptionsResult['status'],
             'error' => $newSubscriptionsResult['error'],
         ], $formatted);
@@ -211,19 +167,19 @@ function synergywholesale_microsoft365_CreateAccount($params)
     $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
 
     // Logs for successful
-    logModuleCall(MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
+    logModuleCall(ModuleEnums::MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
         'status' => $newSubscriptionsResult['status'],
         'message' => $newSubscriptionsResult['errorMessage'],
     ], $formatted);
 
-    return SUCCESS;
+    return Messages::SUCCESS;
 }
 
 /** Suspend service and subscriptions in SWS API */
 function synergywholesale_microsoft365_SuspendAccount($params)
 {
     if (empty($params['configoption1']) || empty($params['configoption2'])) {
-        return FAILED_MISSING_MODULE_CONFIGS;
+        return Messages::FAILED_MISSING_MODULE_CONFIGS;
     }
 
     // New instance of local WHMCS database and Synergy API
@@ -237,12 +193,12 @@ function synergywholesale_microsoft365_SuspendAccount($params)
 
     if (empty($subscriptionList)) {
         // Logs for error
-        logModuleCall(MODULE_NAME, 'SuspendAccount', [
+        logModuleCall(ModuleEnums::MODULE_NAME, 'SuspendAccount', [
             'productId' => $params['pid'],
             'serviceId' => $params['serviceid'],
-        ], ['error' => 'Unable to retrieve remote subscription IDs'], FAILED_INVALID_CONFIGURATION);
+        ], ['error' => 'Unable to retrieve remote subscription IDs'], Messages::FAILED_INVALID_CONFIGURATION);
 
-        return FAILED_INVALID_CONFIGURATION;
+        return Messages::FAILED_INVALID_CONFIGURATION;
     }
 
     $error = [];
@@ -285,10 +241,10 @@ function synergywholesale_microsoft365_SuspendAccount($params)
 
     // if $error array is not empty, that means one or more subscriptions couldn't be suspended
     if (!empty($error)) {
-        $returnMessage = FAILED_SUSPEND_LIST . implode(', ', $error);
+        $returnMessage = Messages::FAILED_SUSPEND_LIST . implode(', ', $error);
 
         // Logs for error
-        logModuleCall(MODULE_NAME, 'SuspendAccount', [
+        logModuleCall(ModuleEnums::MODULE_NAME, 'SuspendAccount', [
             'productId' => $params['pid'],
             'serviceId' => $params['serviceid'],
         ], $error, $returnMessage);
@@ -297,22 +253,22 @@ function synergywholesale_microsoft365_SuspendAccount($params)
     }
 
     // Update service status in local WHMCS
-    $whmcsLocalDb->updateServiceStatus($params['serviceid'], STATUS_SUSPENDED);
+    $whmcsLocalDb->updateServiceStatus($params['serviceid'], Status::STATUS_SUSPENDED);
 
     // Logs for success
-    logModuleCall(MODULE_NAME, 'SuspendAccount', [
+    logModuleCall(ModuleEnums::MODULE_NAME, 'SuspendAccount', [
         'productId' => $params['pid'],
         'serviceId' => $params['serviceid'],
-    ], $success, OK_SUSPEND . implode(', ', $success));
+    ], $success, Messages::OK_SUSPEND . implode(', ', $success));
 
-    return SUCCESS;
+    return Messages::SUCCESS;
 }
 
 /** Unsuspend service and subscriptions in SWS API */
 function synergywholesale_microsoft365_UnsuspendAccount($params)
 {
     if (empty($params['configoption1']) || empty($params['configoption2'])) {
-        return FAILED_MISSING_MODULE_CONFIGS;
+        return Messages::FAILED_MISSING_MODULE_CONFIGS;
     }
 
     // New instance of local WHMCS database and Synergy API
@@ -326,12 +282,12 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
 
     if (empty($subscriptionList)) {
         // Logs for error
-        logModuleCall(MODULE_NAME, 'UnsuspendAccount', [
+        logModuleCall(ModuleEnums::MODULE_NAME, 'UnsuspendAccount', [
             'productId' => $params['pid'],
             'serviceId' => $params['serviceid'],
-        ], ['error' => 'Unable to retrieve remote subscription IDs'], FAILED_INVALID_CONFIGURATION);
+        ], ['error' => 'Unable to retrieve remote subscription IDs'], Messages::FAILED_INVALID_CONFIGURATION);
 
-        return FAILED_INVALID_CONFIGURATION;
+        return Messages::FAILED_INVALID_CONFIGURATION;
     }
 
     $error = [];
@@ -376,34 +332,34 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
 
     // if $error array is not empty, that means one or more subscriptions couldn't be suspended
     if (!empty($error)) {
-        $returnMessage = FAILED_UNSUSPEND_LIST . implode(', ', $error);
+        $returnMessage = Messages::FAILED_UNSUSPEND_LIST . implode(', ', $error);
 
         // Logs for error
-        logModuleCall(MODULE_NAME, 'UnsuspendAccount', [
+        logModuleCall(ModuleEnums::MODULE_NAME, 'UnsuspendAccount', [
             'productId' => $params['pid'],
             'serviceId' => $params['serviceid'],
         ], $error, $returnMessage);
 
-        return FAILED_UNSUSPEND_LIST . implode(', ', $error);
+        return Messages::FAILED_UNSUSPEND_LIST . implode(', ', $error);
     }
 
     // Update service status in local WHMCS
-    $whmcsLocalDb->updateServiceStatus($params['serviceid'], STATUS_ACTIVE);
+    $whmcsLocalDb->updateServiceStatus($params['serviceid'], Status::STATUS_ACTIVE);
 
     // Logs for success
-    logModuleCall(MODULE_NAME, 'UnsuspendAccount', [
+    logModuleCall(ModuleEnums::MODULE_NAME, 'UnsuspendAccount', [
         'productId' => $params['pid'],
         'serviceId' => $params['serviceid'],
-    ], $success, OK_UNSUSPEND . implode(', ', $success));
+    ], $success, Messages::OK_UNSUSPEND . implode(', ', $success));
 
-    return SUCCESS;
+    return Messages::SUCCESS;
 }
 
 /** Terminate service and subscriptions in SWS API */
 function synergywholesale_microsoft365_TerminateAccount($params)
 {
     if (empty($params['configoption1']) || empty($params['configoption2'])) {
-        return FAILED_MISSING_MODULE_CONFIGS;
+        return Messages::FAILED_MISSING_MODULE_CONFIGS;
     }
 
     // New instance of local WHMCS database and Synergy API
@@ -417,12 +373,12 @@ function synergywholesale_microsoft365_TerminateAccount($params)
 
     if (empty($subscriptionList)) {
         // Logs for error
-        logModuleCall(MODULE_NAME, 'TerminateAccount', [
+        logModuleCall(ModuleEnums::MODULE_NAME, 'TerminateAccount', [
             'productId' => $params['pid'],
             'serviceId' => $params['serviceid'],
-        ], ['error' => 'Unable to retrieve remote subscription IDs'], FAILED_INVALID_CONFIGURATION);
+        ], ['error' => 'Unable to retrieve remote subscription IDs'], Messages::FAILED_INVALID_CONFIGURATION);
 
-        return FAILED_INVALID_CONFIGURATION;
+        return Messages::FAILED_INVALID_CONFIGURATION;
     }
 
     $error = [];
@@ -463,27 +419,27 @@ function synergywholesale_microsoft365_TerminateAccount($params)
 
     // if $error array is not empty, that means one or more subscriptions couldn't be suspended
     if (!empty($error)) {
-        $returnMessage = FAILED_TERMINATE_LIST . implode(', ', $error);
+        $returnMessage = Messages::FAILED_TERMINATE_LIST . implode(', ', $error);
 
         // Logs for error
-        logModuleCall(MODULE_NAME, 'TerminateAccount', [
+        logModuleCall(ModuleEnums::MODULE_NAME, 'TerminateAccount', [
             'productId' => $params['pid'],
             'serviceId' => $params['serviceid'],
         ], $error, $returnMessage);
 
-        return FAILED_TERMINATE_LIST . implode(', ', $error);
+        return Messages::FAILED_TERMINATE_LIST . implode(', ', $error);
     }
 
     // Update service status in local WHMCS
-    $whmcsLocalDb->updateServiceStatus($params['serviceid'], STATUS_CANCELLED);
+    $whmcsLocalDb->updateServiceStatus($params['serviceid'], Status::STATUS_CANCELLED);
 
     // Logs for success
-    logModuleCall(MODULE_NAME, 'TerminateAccount', [
+    logModuleCall(ModuleEnums::MODULE_NAME, 'TerminateAccount', [
         'productId' => $params['pid'],
         'serviceId' => $params['serviceid'],
-    ], $success, OK_TERMINATE);
+    ], $success, Messages::OK_TERMINATE);
 
-    return SUCCESS;
+    return Messages::SUCCESS;
 }
 
 /** Perform change plan (subscriptions and quantities) for this tenant (service)
@@ -493,7 +449,7 @@ function synergywholesale_microsoft365_TerminateAccount($params)
 function synergywholesale_microsoft365_ChangePackage($params)
 {
     if (empty($params['configoption1']) || empty($params['configoption2'])) {
-        return FAILED_MISSING_MODULE_CONFIGS;
+        return Messages::FAILED_MISSING_MODULE_CONFIGS;
     }
 
     // New instance of local WHMCS database and Synergy API
@@ -587,8 +543,8 @@ function synergywholesale_microsoft365_ChangePackage($params)
         // Check and handle action based on remote status of subscription
         switch ($thisSubscription['subscriptionStatus']) {
             // If service is suspended or cancelled, we unsuspend and update seat
-            case STATUS_SUSPENDED:
-            case STATUS_CANCELLED:
+            case Status::STATUS_SUSPENDED:
+            case Status::STATUS_CANCELLED:
                 $actionResult = json_decode(json_encode($synergyAPI->unsuspendSubscription($existingSubscriptionId)), true);
                 $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
 
@@ -604,13 +560,13 @@ function synergywholesale_microsoft365_ChangePackage($params)
                 $updateQuantity = true;
                 break;
             // if service is active or pending, we can just update seat accordingly
-            case STATUS_ACTIVE:
-            case STATUS_PENDING:
+            case Status::STATUS_ACTIVE:
+            case Status::STATUS_PENDING:
                 $updateQuantity = true;
                 break;
             // If service is already deleted, we purchase new subscription for that product ID
             // NOTE: In this case when purchase new subscription for that pre-own product, Synergy would re-activate the old subscription, so we don't have to delete or update the subscription ID in custom fields
-            case STATUS_DELETED:
+            case Status::STATUS_DELETED:
                 $subscriptionsToCreate[] = $row;
                 break;
         }
@@ -690,10 +646,10 @@ function synergywholesale_microsoft365_ChangePackage($params)
     if (!empty($error)) {
         // Even in case of error, we still want to see if any part of the process was successful
         $logResult = array_merge($success, $error);
-        $returnMessage = FAILED_CHANGE_PLAN . ' Error: ' . implode(', ', $logResult);
+        $returnMessage = Messages::FAILED_CHANGE_PLAN . ' Error: ' . implode(', ', $logResult);
 
         // Logs for error
-        logModuleCall(MODULE_NAME, 'ChangePackage', [
+        logModuleCall(ModuleEnums::MODULE_NAME, 'ChangePackage', [
             'productId' => $params['pid'],
             'serviceId' => $params['serviceid'],
         ], $logResult, $returnMessage);
@@ -702,18 +658,18 @@ function synergywholesale_microsoft365_ChangePackage($params)
     }
 
     // Logs for success
-    logModuleCall(MODULE_NAME, 'ChangePackage', [
+    logModuleCall(ModuleEnums::MODULE_NAME, 'ChangePackage', [
         'productId' => $params['pid'],
         'serviceId' => $params['serviceid'],
-    ], $success, OK_CHANGE_PLAN . implode(', ', $success));
+    ], $success, Messages::OK_CHANGE_PLAN . implode(', ', $success));
 
-    return SUCCESS;
+    return Messages::SUCCESS;
 }
 
 function synergywholesale_microsoft365_ClientArea($params)
 {
     if (empty($params['configoption1']) || empty($params['configoption2'])) {
-        return FAILED_MISSING_MODULE_CONFIGS;
+        return Messages::FAILED_MISSING_MODULE_CONFIGS;
     }
 
     // New instance of local WHMCS database and Synergy API
@@ -801,34 +757,34 @@ function synergywholesale_microsoft365_getSubscriptionStatusInvalid($action, $st
     switch ($action) {
         case 'Suspend':
             // Message if subscription is already terminated
-            if (in_array($status, TERMINATED_STATUS)) {
+            if (in_array($status, Status::TERMINATED_STATUS)) {
                 return "[{$subscriptionId}] Subscription already terminated.";
             }
 
             // Message if subscription is already suspended
-            if (in_array($status, SUSPENDED_STATUS)) {
+            if (in_array($status, Status::SUSPENDED_STATUS)) {
                 return "[{$subscriptionId}] Subscription already suspended.";
             }
 
             // Message for other unrecognised statuses
-            if (!in_array($status, ACTIVE_STATUS)) {
+            if (!in_array($status, Status::ACTIVE_STATUS)) {
                 return "[{$subscriptionId}] Subscription not in active status.";
             }
             break;
         case 'Unsuspend':
             // Message if subscription is already active or pending
-            if (in_array($status, ACTIVE_STATUS)) {
+            if (in_array($status, Status::ACTIVE_STATUS)) {
                 return "[{$subscriptionId}] Subscription already active.";
             }
 
             // Message for other unrecognised statuses
-            if (!in_array($status, SUSPENDED_STATUS)) {
+            if (!in_array($status, Status::SUSPENDED_STATUS)) {
                 return "[{$subscriptionId}] Subscription not in suspended status.";
             }
             break;
         case 'Terminate':
             // Message if subscription is already terminated
-            if (in_array($status, TERMINATED_STATUS)) {
+            if (in_array($status, Status::TERMINATED_STATUS)) {
                 return "[{$subscriptionId}] Subscription already terminated.";
             }
             break;
