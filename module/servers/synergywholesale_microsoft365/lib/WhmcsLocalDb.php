@@ -12,24 +12,29 @@ class WhmcsLocalDb
     const WHMCS_PRODUCT_TABLE = 'tblproducts';
     const WHMCS_CURRENCY_TABLE = 'tblcurrencies';
 
-    public function updateServiceStatus(int $id, string $status) {
+    public function updateServiceStatus(int $id, string $status)
+    {
         return DB::table(self::WHMCS_HOSTING_TABLE)->where('id', $id)->update(['domainstatus' => $status]);
     }
 
-    public function getClientById(int $id) {
-        return DB::table(self::WHMCS_TENANT_TABLE)->select('*')->find('id', $id);
+    public function getClientById(int $id)
+    {
+        return DB::table(self::WHMCS_TENANT_TABLE)->find($id);
     }
 
-    public function getProductById(int $id) {
-        return DB::table(self::WHMCS_PRODUCT_TABLE)->select('*')->find('id', $id);
+    public function getProductById(int $id)
+    {
+        return DB::table(self::WHMCS_PRODUCT_TABLE)->find($id);
     }
 
-    public function getServiceById(int $id) {
-        return DB::table(self::WHMCS_HOSTING_TABLE)->select('*')->find('id', $id);
+    public function getServiceById(int $id)
+    {
+        return DB::table(self::WHMCS_HOSTING_TABLE)->find($id);
     }
 
-    public function getCurrencyById(int $id) {
-        return DB::table(self::WHMCS_CURRENCY_TABLE)->select('*')->find('id', $id);
+    public function getCurrencyById(int $id)
+    {
+        return DB::table(self::WHMCS_CURRENCY_TABLE)->find( $id);
     }
 
     public function getSubscriptionsForAction($serviceId, $action, $localProductId = '')
