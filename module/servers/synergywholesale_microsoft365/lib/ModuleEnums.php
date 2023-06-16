@@ -2,7 +2,7 @@
 
 namespace WHMCS\Module\Server\SynergywholesaleMicrosoft365;
 
-interface ModuleEnums
+class ModuleEnums
 {
     const WHMCS_TENANT_TABLE = 'tblclients';
     const WHMCS_HOSTING_TABLE = 'tblhosting';

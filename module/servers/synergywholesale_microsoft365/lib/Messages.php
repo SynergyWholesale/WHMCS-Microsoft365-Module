@@ -2,7 +2,7 @@
 
 namespace WHMCS\Module\Server\SynergywholesaleMicrosoft365;
 
-interface Messages
+class Messages
 {
     const SUCCESS = 'success';
     const TENANT_EXISTED = '[FAILED] This tenant has already been created.';

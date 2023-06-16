@@ -2,7 +2,7 @@
 
 namespace WHMCS\Module\Server\SynergywholesaleMicrosoft365;
 
-interface ServiceStatuses
+class ServiceStatuses
 {
     const STATUS_DELETED = 'Deleted';
     const STATUS_CANCELLED = 'Cancelled';
