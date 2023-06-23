@@ -545,19 +545,16 @@ function synergywholesale_microsoft365_ChangePackage($params)
             // If service is suspended or cancelled, we unsuspend and update seat
             case Status::STATUS_SUSPENDED:
             case Status::STATUS_CANCELLED:
-                $actionResult = json_decode(json_encode($synergyAPI->unsuspendSubscription($existingSubscriptionId)), true);
-                $formattedMessage = synergywholesale_microsoft365_formatStatusAndMessage($actionResult);
+                // In case the service is suspended or terminated, we shouldn't do anything, just add log message that customer should unsuspend it before performing change package action
+                $returnMessage = Messages::FAILED_CHANGE_PLAN . " Error: This service is currently {$thisSubscription['subscriptionStatus']}. Please unsuspend the service before proceeding the change package action.";
+                
+                // Logs for error
+                logModuleCall(ModuleEnums::MODULE_NAME, 'ChangePackage', [
+                    'productId' => $params['pid'],
+                    'serviceId' => $params['serviceid'],
+                ], $returnMessage);
 
-                // This means the API request wasn't successful, add this ID to $error array for displaying message
-                if (!is_numeric(strpos($formattedMessage, '[SUCCESS]'))) {
-                    $error[] = "[{$existingSubscriptionId}] {$formattedMessage}";
-                    break;
-                }
-
-                $success[] = "[UNSUSPEND SUBSCRIPTION] [{$existingSubscriptionId}] {$formattedMessage}";
-
-                // After unsuspend the subscription, we would proceed to Update Quantity part below the switch
-                $updateQuantity = true;
+                return $returnMessage;
                 break;
             // if service is active or pending, we can just update seat accordingly
             case Status::STATUS_ACTIVE:
