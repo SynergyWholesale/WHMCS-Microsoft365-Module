@@ -82,9 +82,9 @@
                 <div class="section-row-title w-[50%] font-semibold">{$productName[1]}</div>
                 <div class="section-row-value w-[50%] text-sm">
                     {if $optionDetails['quantity'] <= 0}
-                        <span class="text-red-500 font-semibold mr-2">0</span> Seat
+                        <span class="text-red-500 font-semibold mr-2">0</span> Seats
                     {else}
-                        <span class="text-green-500 font-semibold mr-2">{$optionDetails['quantity']}</span> Seat(s)
+                        <span class="text-green-500 font-semibold mr-2">{$optionDetails['quantity']}</span> {Illuminate\Support\Str::plural("Seat", $optionDetails['quantity'])}
                     {/if}
                 </div>
             </div>
