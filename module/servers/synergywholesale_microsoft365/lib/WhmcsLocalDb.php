@@ -81,7 +81,7 @@ class WhmcsLocalDb
                         $productId = explode('|', $row->optionname)[0];
                         // If this option has 0 quantity, that means user didn't order it, just skip it
                         if ($row->qty == 0) {
-                            break;
+                            continue;
                         }
 
                         // Otherwise if it's greater than 0, we add it to order
