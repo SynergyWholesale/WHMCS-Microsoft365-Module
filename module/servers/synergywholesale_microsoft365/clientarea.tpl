@@ -76,8 +76,10 @@
     </div>
     <div class="section-body w-full bg-white px-3 py-3 border-solid border-[0.5px] border-gray-300 rounded-[5px] flex flex-col gap-3">
         {foreach from=$configOptions key=index item=optionDetails}
+            {* We need to remove the SWS product ID before the product name before displaying to client area *}
+            {assign var=productName value="|"|explode:$optionDetails['productName']}
             <div class="section-row w-full flex gap-2 border-solid border-b-[0.5px] border-gray-200 py-1 items-end">
-                <div class="section-row-title w-[50%] font-semibold">{$optionDetails['productName']}</div>
+                <div class="section-row-title w-[50%] font-semibold">{$productName[1]}</div>
                 <div class="section-row-value w-[50%] text-sm">
                     {if $optionDetails['quantity'] <= 0}
                         <span class="text-red-500 font-semibold mr-2">0</span> Seat
@@ -87,19 +89,5 @@
                 </div>
             </div>
         {/foreach}
-    </div>
-
-    <div class="section-header text-blue-600 mb-2 text-2xl mt-4 font-semibold">
-        <h2>Server Details</h2>
-    </div>
-    <div class="section-body w-full bg-white px-3 py-3 border-solid border-[0.5px] border-gray-300 rounded-[5px] flex flex-col gap-3">
-        <div class="section-row w-full flex gap-2 border-solid border-b-[0.5px] border-gray-200 py-1 items-end">
-            <div class="section-row-title w-[30%] font-semibold">Server Host Name</div>
-            <div class="section-row-value w-[70%] text-sm">{$server['serverName']}</div>
-        </div>
-        <div class="section-row w-full flex gap-2 border-solid border-b-[0.5px] border-gray-200 py-1 items-end">
-            <div class="section-row-title w-[30%] font-semibold">IP Address</div>
-            <div class="section-row-value w-[70%] text-sm">{$server['ipAddress']}</div>
-        </div>
     </div>
 </div>

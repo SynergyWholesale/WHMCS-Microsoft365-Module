@@ -684,6 +684,21 @@ function synergywholesale_microsoft365_ClientArea($params)
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
     $configOptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'compare');
 
+    // We have to remove the product ID saved in custom field to display in Client Area
+    $displaySubscriptionValue = [];
+    foreach ($customFields as $key => $value) {
+        if ($key == 'Remote Subscriptions') {
+            $subscriptionLists = explode(",", $value['value']);
+            foreach ($subscriptionLists as $subscription) {
+                $subscriptionSplit = explode("|", $subscription);
+                $displaySubscriptionValue[] = $subscriptionSplit[1];
+            }
+        }
+    }
+    if (!empty($displaySubscriptionValue)) {
+        $customFields['Remote Subscriptions']['value'] = implode(', ', $displaySubscriptionValue);
+    }
+
     return [
         'tabOverviewReplacementTemplate' => 'clientarea',
         'vars' => [
@@ -691,10 +706,6 @@ function synergywholesale_microsoft365_ClientArea($params)
             'product' => $currentProductLocal,
             'customFields' => $customFields,
             'configOptions' => $configOptions,
-            'server' => [
-                'serverName' => $params['serverhostname'],
-                'ipAddress' => $params['serverip'],
-            ],
             'domainPassword' => $params['password'],
             'serviceIsOverdue' => strtotime('now') > strtotime($params['model']['nextduedate']),
             'billing' => [
