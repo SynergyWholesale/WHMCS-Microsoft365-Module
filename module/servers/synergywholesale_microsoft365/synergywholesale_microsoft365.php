@@ -734,8 +734,8 @@ function synergywholesale_microsoft365_ClientArea($params)
 function synergywholesale_microsoft365_AdminServicesTabFields($params)
 {
     return [
-        "<span style='color: red; font-weight: bold; height: 100%'>IMPORTANT</span>" => "<span style='color: red; font-weight: bold'>PLEASE DO NOT CHANGE: REMOTE TENANT ID, DOMAIN PREFIX, REMOTE SUBSCRIPTIONS</span>",
-        '' => "<span style='font-weight: bold'>THESE CHANGES WILL NOT BE UPDATED IN SYNERGY WHOLESALE SYSTEM AND MAY CAUSE ERRORS</span>",
+        "<span style='color: red; font-weight: bold; height: 100%'>IMPORTANT</span>" => "<span style='font-weight: bold'>PLEASE NOTE: CHANGING <span style='text-decoration: underline; color: red;'>THE REMOTE TENANT ID</span>, <span style='text-decoration: underline; color: red;'>DOMAIN PREFIX</span> OR <span style='text-decoration: underline; color: red;'>REMOTE SUBSCRIPTION FIELDS</span> IS NOT RECOMMENDED AND CAN CAUSE ISSUES WITH THE CONNECTION TO YOUR CLIENT/SUBSCRIPTIONS IN SYNERGY</span>",
+        '' => "<span style='font-weight: bold'>PLEASE ONLY MODIFY IF YOU ARE CERTAIN ABOUT THE CHANGES BEING MADE</span>",
     ];
 }
 
