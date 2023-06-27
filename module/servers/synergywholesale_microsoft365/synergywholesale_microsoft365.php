@@ -671,7 +671,6 @@ function synergywholesale_microsoft365_ClientArea($params)
 
     // New instance of local WHMCS database and Synergy API
     $whmcsLocalDb = new LocalDB();
-    $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
 
     $currentProductLocal = $whmcsLocalDb->getProductById($params['pid']);
     $currentService = $whmcsLocalDb->getServiceById($params['serviceid']);
@@ -726,6 +725,17 @@ function synergywholesale_microsoft365_ClientArea($params)
                 ],
             ]
         ],
+    ];
+}
+
+/**
+ * Add extra messages to Admin Area that some custom fields shouldn't be edited
+ */
+function synergywholesale_microsoft365_AdminServicesTabFields($params)
+{
+    return [
+        "<span style='color: red; font-weight: bold; height: 100%'>IMPORTANT</span>" => "<span style='color: red; font-weight: bold'>PLEASE DO NOT CHANGE: REMOTE TENANT ID, DOMAIN PREFIX, REMOTE SUBSCRIPTIONS</span>",
+        '' => "<span style='font-weight: bold'>THESE CHANGES WILL NOT BE UPDATED IN SYNERGY WHOLESALE SYSTEM AND MAY CAUSE ERRORS</span>",
     ];
 }
 
