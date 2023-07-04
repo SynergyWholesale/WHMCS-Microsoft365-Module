@@ -140,4 +140,29 @@ class WhmcsLocalDb
                 'updated_at' => $now,
             ]) ? $value : false;
     }
+
+    public function getRemoteProductIdsFromPackage($packageId)
+    {
+        $return = [];
+        // We get the list of config options based on the product id
+        $configOptionList = DB::table('tblproductconfigoptions')
+            ->join('tblproductconfiggroups', 'tblproductconfigoptions.gid', '=', 'tblproductconfiggroups.id')
+            ->join('tblproductconfiglinks', 'tblproductconfiglinks.gid', '=', 'tblproductconfiggroups.id')
+            ->join('tblproducts', 'tblproductconfiglinks.pid', '=', 'tblproducts.id')
+            ->select(['tblproductconfigoptions.optionname'])
+            ->where('tblproducts.id', '=', $packageId)
+            ->get();
+
+        // If it's empty, it means nothing in the DB
+        if (empty($configOptionList)) {
+            return $return;
+        }
+
+        // Loop through the option names and retrieve the product ID
+        foreach ($configOptionList as $option) {
+            $return[] = explode('|', $option->optionname)[0];
+        }
+
+        return $return;
+    }
 }

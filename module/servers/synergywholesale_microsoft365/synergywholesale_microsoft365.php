@@ -695,6 +695,9 @@ function synergywholesale_microsoft365_ClientArea($params)
         $customFields['Remote Subscriptions']['value'] = implode(', ', $displaySubscriptionValue);
     }
 
+    // Retrieve the list of current product's config option IDs
+    $currentProductConfigOptionIds = $whmcsLocalDb->getRemoteProductIdsFromPackage($params['pid']);
+
     return [
         'tabOverviewReplacementTemplate' => 'clientarea',
         'vars' => [
@@ -702,6 +705,7 @@ function synergywholesale_microsoft365_ClientArea($params)
             'product' => $currentProductLocal,
             'customFields' => $customFields,
             'configOptions' => $configOptions,
+            'currentProductConfigOptionIds' => $currentProductConfigOptionIds,
             'domainPassword' => $params['password'],
             'serviceIsOverdue' => strtotime('now') > strtotime($params['model']['nextduedate']),
             'billing' => [

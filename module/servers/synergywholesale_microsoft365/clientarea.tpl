@@ -78,6 +78,8 @@
         {foreach from=$configOptions key=index item=optionDetails}
             {* We need to remove the SWS product ID before the product name before displaying to client area *}
             {assign var=productName value="|"|explode:$optionDetails['productName']}
+            {* We want to check if this option's product ID is within the correct config option lists, then we display to client *}
+            {if $productName[0]|in_array:$currentProductConfigOptionIds}
             <div class="section-row w-full flex gap-2 border-solid border-b-[0.5px] border-gray-200 py-1 items-end">
                 <div class="section-row-title w-[50%] font-semibold">{$productName[1]}</div>
                 <div class="section-row-value w-[50%] text-sm">
@@ -88,6 +90,7 @@
                     {/if}
                 </div>
             </div>
+            {/if}
         {/foreach}
     </div>
 </div>
