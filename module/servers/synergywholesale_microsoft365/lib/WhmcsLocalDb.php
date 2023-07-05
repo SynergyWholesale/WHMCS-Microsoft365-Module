@@ -131,7 +131,25 @@ class WhmcsLocalDb
 
     public function updateCustomFieldValues($fieldId, $serviceId, $value)
     {
+        $existingRow = DB::table('tblcustomfieldsvalues')
+            ->where('fieldid', $fieldId)
+            ->where('relid', $serviceId)
+            ->first();
+
         $now = date('Y-m-d H:i:s');
+
+        // If field not inserted, then create field
+        if (!$existingRow) {
+            return DB::table('tblcustomfieldsvalues')
+                ->insert([
+                    'fieldid' => $fieldId,
+                    'relid' => $serviceId,
+                    'value' => $value,
+                    'updated_at' => $now,
+                ]) ? $value : false;
+        }
+
+        // If field already existed, just update
         return DB::table('tblcustomfieldsvalues')
             ->where('fieldid', $fieldId)
             ->where('relid', $serviceId)

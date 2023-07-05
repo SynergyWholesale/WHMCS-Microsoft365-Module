@@ -124,9 +124,16 @@ function synergywholesale_microsoft365_CreateAccount($params)
         return $formatted;
     }
 
+    // Get remote product's ID that belong to the current service's product
+    $eligibleProductIds = $whmcsLocalDb->getRemoteProductIdsFromPackage($params['pid']);
     // Check if all the quantities of config options are 0, that mean user has just placed the order, so we only want to create the tenant, not subscriptions
     $purchasableOrder = [];
     foreach ($subscriptionOrder as $order) {
+        // If this productId isn't within the eligible product ID list, the skip to next loop, we don't want to touch subscriptions from previous package
+        if (!in_array($order['productId'], $eligibleProductIds)) {
+            continue;
+        }
+
         if ($order['quantity'] != 0) {
             $purchasableOrder[] = $order;
         }
@@ -157,14 +164,41 @@ function synergywholesale_microsoft365_CreateAccount($params)
     /**
      * INSERT OR UPDATE NEW REMOTE VALUES TO LOCAL WHMCS DATABASE (Remote Subscriptions)
      */
-    // Generate data for saving new subscriptions ID as format "productId|subscriptionId"
-    $remoteSubscriptionData = [];
+    // Retrieve the list of new subscriptions purchased from Synergy
+    $newSubscriptionList = [];
     foreach ($newSubscriptionsResult['subscriptionList'] as $eachSubscription) {
-        $remoteSubscriptionData[] = "{$eachSubscription['productId']}|{$eachSubscription['subscriptionId']}";
+        $newSubscriptionList[] = $eachSubscription['subscriptionId'];
+    }
+
+    // We should check and keep the subscriptions from previous package
+    // Retrieve list of custom fields of this service
+    $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
+    // Split list of subscription IDs into an array for looping through
+    $subscriptionList = explode(', ', $customFields['Remote Subscriptions']['value']) ?? [];
+
+    // If the subscription list is not empty, that means the user runs "create" command with some subscriptions existed
+    // We want to add new subscriptions to the list while keep the old subscriptions from previous package as well if applicable
+    // So we loop through the list of current subscriptions, if it is not found in the new subscriptions list, that means it is from the previous package, we want to keep it in the data to update in the custom field
+    $finalRemoteSubscriptionData = [];
+
+    // Generate data for saving new subscriptions ID as format "productId|subscriptionId"
+    foreach ($newSubscriptionsResult['subscriptionList'] as $eachSubscription) {
+        $finalRemoteSubscriptionData[] = "{$eachSubscription['productId']}|{$eachSubscription['subscriptionId']}";
+    }
+
+    // Loop through current subscription list
+    if (!empty($subscriptionList)) {
+        foreach ($subscriptionList as $eachSubscription) {
+            $subscriptionId = explode('|', $eachSubscription)[1] ?? '';
+
+            if (!in_array($subscriptionId, $newSubscriptionList)) {
+                $finalRemoteSubscriptionData[] = $eachSubscription;
+            }
+        }
     }
 
     // Update new records to local database
-    $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $remoteSubscriptionData));
+    $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $finalRemoteSubscriptionData));
 
     // Logs for successful
     logModuleCall(ModuleEnums::MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
@@ -201,11 +235,20 @@ function synergywholesale_microsoft365_SuspendAccount($params)
         return Messages::FAILED_INVALID_CONFIGURATION;
     }
 
+    // Get remote product's ID that belong to the current service's product
+    $eligibleProductIds = $whmcsLocalDb->getRemoteProductIdsFromPackage($params['pid']);
+
     $error = [];
     $success = [];
     foreach ($subscriptionList as $eachSubscription) {
-        // Get the subscription ID split from "productId|subscriptionId"
+        // Get the subscription ID and product ID split from "productId|subscriptionId"
         $subscriptionId = explode('|', $eachSubscription)[1] ?? '';
+        $productId = explode('|', $eachSubscription)[0] ?? '';
+
+        // If this productId isn't within the eligible product ID list, the skip to next loop, we don't want to touch subscriptions from previous package
+        if (!in_array($productId, $eligibleProductIds)) {
+            continue;
+        }
 
         // Check if subscription is currently in Active or Pending, if NOT, then skip it
         $thisSubscription = $synergyAPI->getSubscriptionDetails($subscriptionId);
@@ -290,11 +333,20 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
         return Messages::FAILED_INVALID_CONFIGURATION;
     }
 
+    // Get remote product's ID that belong to the current service's product
+    $eligibleProductIds = $whmcsLocalDb->getRemoteProductIdsFromPackage($params['pid']);
+
     $error = [];
     $success = [];
     foreach ($subscriptionList as $eachSubscription) {
         // Get the subscription ID split from "productId|subscriptionId"
-        $subscriptionId = explode('|', $eachSubscription)[1] ?? false;
+        $subscriptionId = explode('|', $eachSubscription)[1] ?? '';
+        $productId = explode('|', $eachSubscription)[0] ?? '';
+
+        // If this productId isn't within the eligible product ID list, the skip to next loop, we don't want to touch subscriptions from previous package
+        if (!in_array($productId, $eligibleProductIds)) {
+            continue;
+        }
 
         // Check if subscription is currently in Active or Pending, then skip it
         // If it is currently  terminated, then skip it
@@ -381,11 +433,20 @@ function synergywholesale_microsoft365_TerminateAccount($params)
         return Messages::FAILED_INVALID_CONFIGURATION;
     }
 
+    // Get remote product's ID that belong to the current service's product
+    $eligibleProductIds = $whmcsLocalDb->getRemoteProductIdsFromPackage($params['pid']);
+
     $error = [];
     $success = [];
     foreach ($subscriptionList as $eachSubscription) {
         // Get the subscription ID split from "productId|subscriptionId"
-        $subscriptionId = explode('|', $eachSubscription)[1] ?? false;
+        $subscriptionId = explode('|', $eachSubscription)[1] ?? '';
+        $productId = explode('|', $eachSubscription)[0] ?? '';
+
+        // If this productId isn't within the eligible product ID list, the skip to next loop, we don't want to touch subscriptions from previous package
+        if (!in_array($productId, $eligibleProductIds)) {
+            continue;
+        }
 
         // Check if subscription is currently in terminated, then skip it
         // If it is currently  active stage or suspended stage, then we terminate
@@ -544,17 +605,9 @@ function synergywholesale_microsoft365_ChangePackage($params)
         switch ($thisSubscription['subscriptionStatus']) {
             // If service is suspended or cancelled, we unsuspend and update seat
             case Status::STATUS_SUSPENDED:
-            case Status::STATUS_CANCELLED:
                 // In case the service is suspended or terminated, we shouldn't do anything, just add log message that customer should unsuspend it before performing change package action
-                $returnMessage = Messages::FAILED_CHANGE_PLAN . " Error: This service is currently {$thisSubscription['subscriptionStatus']}. Please unsuspend the service before proceeding the change package action.";
-                
-                // Logs for error
-                logModuleCall(ModuleEnums::MODULE_NAME, 'ChangePackage', [
-                    'productId' => $params['pid'],
-                    'serviceId' => $params['serviceid'],
-                ], $returnMessage);
+                $error[] = "[{$existingSubscriptionId}] This service is currently {$thisSubscription['subscriptionStatus']}. Please unsuspend the service before proceeding the change package action.";
 
-                return $returnMessage;
                 break;
             // if service is active or pending, we can just update seat accordingly
             case Status::STATUS_ACTIVE:
@@ -563,6 +616,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
                 break;
             // If service is already deleted, we purchase new subscription for that product ID
             // NOTE: In this case when purchase new subscription for that pre-own product, Synergy would re-activate the old subscription, so we don't have to delete or update the subscription ID in custom fields
+            case Status::STATUS_CANCELLED:
             case Status::STATUS_DELETED:
                 $subscriptionsToCreate[] = $row;
                 break;
@@ -629,6 +683,10 @@ function synergywholesale_microsoft365_ChangePackage($params)
 
             // Generate data for saving new subscriptions ID as format "productId|subscriptionId"
             foreach ($existingSubscriptions as $queryProductId => $subscriptionId) {
+                if (empty($queryProductId) || empty($subscriptionId['subscriptionId'])) {
+                    continue;
+                }
+
                 $updateValue[] = "{$queryProductId}|{$subscriptionId['subscriptionId']}";
             }
 
