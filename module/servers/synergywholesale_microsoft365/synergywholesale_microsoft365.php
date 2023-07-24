@@ -738,20 +738,9 @@ function synergywholesale_microsoft365_ClientArea($params)
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
     $configOptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'compare');
 
-    // We have to remove the product ID saved in custom field to display in Client Area
-    $displaySubscriptionValue = [];
-    foreach ($customFields as $key => $value) {
-        if ($key == 'Remote Subscriptions') {
-            $subscriptionLists = explode(",", $value['value']);
-            foreach ($subscriptionLists as $subscription) {
-                $subscriptionSplit = explode("|", $subscription);
-                $displaySubscriptionValue[] = $subscriptionSplit[1];
-            }
-        }
-    }
-    if (!empty($displaySubscriptionValue)) {
-        $customFields['Remote Subscriptions']['value'] = implode(', ', $displaySubscriptionValue);
-    }
+    // We only want to display Domain Prefix into client area
+    $customFields = collect($customFields)->only('Domain Prefix')->toArray();
+    $customFields['Domain Prefix']['value'] = "{$customFields['Domain Prefix']['value']}.onmicrosoft.com";
 
     // Retrieve the list of current product's config option IDs
     $currentProductConfigOptionIds = $whmcsLocalDb->getRemoteProductIdsFromPackage($params['pid']);

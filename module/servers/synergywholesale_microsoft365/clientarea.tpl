@@ -54,16 +54,7 @@
             <div class="section-row w-full flex gap-2 border-solid border-b-[0.5px] border-gray-200 py-1 items-end">
                 <div class="section-row-title w-[30%] font-semibold">{$fieldName}</div>
                 <div class="section-row-value w-[70%] text-sm">
-                    {if $fieldName == 'Customer Agreement'}
-                        {if $fieldDetails['value'] eq 'on'}
-                            YES <i class="fa fa-check text-green-500 ml-2"></i>
-                        {else}
-                            NO
-                        {/if}
-                        <a info="View Microsoft 365 Customer Agreement" href="https://www.microsoft.com/licensing/docs/customeragreement" target="_blank" class="text-blue-500 font-semibold ml-2 hover:text-blue-700">View MS 365 Agreement</a>
-                    {else}
-                        {$fieldDetails['value']}
-                    {/if}
+                    {$fieldDetails['value']}
                 </div>
             </div>
         {/foreach}
