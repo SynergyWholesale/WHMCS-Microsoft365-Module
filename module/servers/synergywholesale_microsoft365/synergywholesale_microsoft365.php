@@ -75,7 +75,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
          */
         $otherData = [
             'password' => $params['password'],
-            'description' => $clientObj->description ?? '',
+            'description' => $params['domain'] ?? ($clientObj->description ?? ''),
             'agreement' => !empty($customFields['Customer Agreement']['value']) &&  $customFields['Customer Agreement']['value'] == 'on',
         ];
 
