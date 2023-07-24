@@ -183,4 +183,53 @@ class WhmcsLocalDb
 
         return $return;
     }
+
+    public function getServicesFromOrder($orderId)
+    {
+        return DB::table('tblhosting')
+            ->join('tblorders', 'tblorders.id', '=', 'tblhosting.orderid')
+            ->select(['tblhosting.*'])
+            ->where('tblhosting.orderid', '=', $orderId)
+            ->get();
+    }
+
+    public function updateServiceValidPassword($serviceId, $newPassword)
+    {
+        return DB::table('tblhosting')
+            ->where('id', $serviceId)
+            ->update([
+                'password' => $newPassword,
+            ]);
+    }
+
+    /** Check if the current password meets the minimum requirement for MS 365 */
+    public function checkPasswordMeetRequirement($password)
+    {
+        return preg_match("/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=(.*[\W]){2,})(?!.* ).{8,12}$/", $password);
+    }
+
+    /** Auto generate a new password that meets the requirement in MS 365 */
+    public function generateValidPassword()
+    {
+        // Sketch out the characters that we can pick
+        $alphabet = "abcdefghijklmnopqrstuvwxyz";
+        $numeric = "0123456789";
+        $special = "!@#$^*()_+~}{[]\:;?><,./-=";
+
+        $finalPassword = "";
+
+        $count = strlen($finalPassword);
+        while ($count <= 12) {
+            $randomAlphabetInt = random_int(0, 25);
+            $randomNumericInt = random_int(0, 9);
+            $randomSpecialInt = random_int(0, 25);
+
+            $finalPassword .= ($count % 2 == 0) ? strtoupper($alphabet[$randomAlphabetInt]) : $alphabet[$randomAlphabetInt];
+
+            $finalPassword .= $numeric[$randomNumericInt];
+            $finalPassword .= $special[$randomSpecialInt];
+        }
+
+        return $finalPassword;
+    }
 }
