@@ -12,12 +12,30 @@ if (!defined('WHMCS'))
 
 // This hook is triggered after the details are saved into database
 add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
-    logActivity("Hook triggered: Admin Product Saved.");
+    // Create instance of WHMCS Local DB
+    $whmcsLocalDb = new LocalDB();
 
+    // Get the current product ID
+    $productId = $vars['pid'];
+    $product = $whmcsLocalDb->getProductById($productId);
+
+    // Get its module's config option values
     $configData = [
         'createConfigOptions' => $_REQUEST['packageconfigoption'][3],
         'createCustomFields' => $_REQUEST['packageconfigoption'][4],
         'configOptionPackage' => $_REQUEST['packageconfigoption'][5],
     ];
-    logActivity("The values are: " . print_r($configData, true));
+
+    // If for some reasons, this field is empty, then we don't do anything
+    if (empty($configData['configOptionPackage'])) {
+        logActivity("Failed to create or assign config option for product #{$product->id} ({$product->name}). Error: Module's Config Option Package not provided.");
+
+        return 0;
+    }
+
+    /** CHECK IF ANY CHECKBOX IS CHECKED */
+    $createCustomFields = !empty($configData['createCustomFields']) && $configData['createCustomFields'] == 'on' ;
+    $createConfigOptions = !empty($configData['createConfigOptions']) && $configData['createConfigOptions'] == 'on';
+
+    logActivity("Successfully create or assign config option for product #{$product->id} ({$product->name}).");
 });
