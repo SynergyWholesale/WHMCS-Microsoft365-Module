@@ -251,4 +251,11 @@ class WhmcsLocalDb
 
         return !empty($existed);
     }
+
+    /** Create new config option that belongs to a config group */
+    public function createConfigOption($data)
+    {
+        return DB::table('tblproductconfigoptions')
+            ->insert($data);
+    }
 }

@@ -72,11 +72,11 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
     }
 
     if (!empty($success)) {
-        logActivity("Successfully performed the following actions: " . implode(', ', $success));
+        logActivity("Successfully performed the following actions: " . implode(' --- ', $success));
     }
 
     if (!empty($error)) {
-        logActivity("Failed to perform the following actions: " . implode(', ', $error));
+        logActivity("Failed to perform the following actions: " . implode(' --- ', $error));
     }
 
     logActivity("Finished action for saving product #{$product->id} ({$product->name}).");

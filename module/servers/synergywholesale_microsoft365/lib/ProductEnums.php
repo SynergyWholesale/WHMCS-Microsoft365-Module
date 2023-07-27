@@ -13,20 +13,6 @@ class ProductEnums
     const CONFIG_GROUP_STANDARD_DESCRIPTION = 'Synergy Wholesale Microsoft 365 Business Standard';
     const CONFIG_GROUP_PREMIUM_NAME = 'Synergy Wholesale Microsoft 365 Business Premium';
     const CONFIG_GROUP_PREMIUM_DESCRIPTION = 'Synergy Wholesale Microsoft 365 Business Premium';
-    const ALL_CONFIG_GROUPS = [
-        [
-            'name' => self::CONFIG_GROUP_BASIC_NAME,
-            'description' => self::CONFIG_GROUP_BASIC_DESCRIPTION,
-        ],
-        [
-            'name' => self::CONFIG_GROUP_STANDARD_NAME,
-            'description' => self::CONFIG_GROUP_STANDARD_DESCRIPTION,
-        ],
-        [
-            'name' => self::CONFIG_GROUP_PREMIUM_NAME,
-            'description' => self::CONFIG_GROUP_PREMIUM_DESCRIPTION,
-        ],
-    ];
 
     /** FOR THESE CONFIG OPTION NAMES, LATER WE WILL ADD SYNERGY PRODUCT'S ID TO PREFIX */
     const CONFIG_OPTION_BASIC_NAME = 'Microsoft 365 Business Basic';
@@ -41,4 +27,47 @@ class ProductEnums
     const DEFAULT_MAX_QUANTITY = 0;
     const DEFAULT_ORDER = 0;
     const DEFAULT_HIDDEN = 0; // Means false
+
+    /** CONSTANTS FOR ALL GROUPS AND ALL OPTIONS */
+    const ALL_CONFIG_OPTIONS = [
+        [
+            'optionname' => self::CONFIG_OPTION_BASIC_NAME,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'optionname' => self::CONFIG_OPTION_STANDARD_NAME,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'optionname' => self::CONFIG_OPTION_PREMIUM_NAME,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+    ];
+
+    const ALL_CONFIG_GROUPS = [
+        [
+            'name' => self::CONFIG_GROUP_BASIC_NAME,
+            'description' => self::CONFIG_GROUP_BASIC_DESCRIPTION,
+        ],
+        [
+            'name' => self::CONFIG_GROUP_STANDARD_NAME,
+            'description' => self::CONFIG_GROUP_STANDARD_DESCRIPTION,
+        ],
+        [
+            'name' => self::CONFIG_GROUP_PREMIUM_NAME,
+            'description' => self::CONFIG_GROUP_PREMIUM_DESCRIPTION,
+        ],
+    ];
 }
