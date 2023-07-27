@@ -21,6 +21,20 @@ function synergywholesale_microsoft365_ConfigOptions()
             'Size' => '100',
             'Description' => 'Your Synergy Wholesale API Key',
         ],
+        'createConfigOptions' => [
+            'FriendlyName' => 'Create Configuration Options?',
+            'Type' => 'yesno',
+        ],
+        'createCustomFields' => [
+            'FriendlyName' => 'Create Custom Fields?',
+            'Type' => 'yesno',
+        ],
+        'configGroupAssign' => [
+            'FriendlyName' => 'Configuration Group Assign',
+            'Type' => 'dropdown',
+            'Options' => ModuleEnums::MS365_PACKAGES,
+            'Default' => ModuleEnums::MS365_BASIC,
+        ],
     ];
 }
 

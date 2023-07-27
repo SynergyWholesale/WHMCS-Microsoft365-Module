@@ -21,4 +21,14 @@ class ModuleEnums
     ];
 
     const MODULE_NAME = '{{MODULE_NAME}}';
+
+    // Declare some constants for product package definition
+    const MS365_BASIC = "ms365_basic";
+    const MS365_STANDARD = "ms365_standard";
+    const MS365_PREMIUM = "ms365_premium";
+    const MS365_PACKAGES = [
+        self:: MS365_BASIC => "Microsoft 365 Business Basic",
+        self::MS365_STANDARD => "Microsoft 365 Business Standard",
+        self::MS365_PREMIUM => "Microsoft 365 Business Premium",
+    ];
 }
