@@ -214,7 +214,7 @@ class WhmcsLocalDb
         // Sketch out the characters that we can pick
         $alphabet = "abcdefghijklmnopqrstuvwxyz";
         $numeric = "0123456789";
-        $special = "@#$^*()_+~}{[]\:;?><,./-=";
+        $special = "{}[]()!@$^*_+=~";
 
         $finalPassword = "";
 
@@ -223,7 +223,7 @@ class WhmcsLocalDb
         while ($count <= 9) {
             $randomAlphabetInt = rand(0, 25);
             $randomNumericInt = rand(0, 9);
-            $randomSpecialInt = rand(0, 25);
+            $randomSpecialInt = rand(0, 14);
 
             $finalPassword .= ($count % 2 == 0) ? strtoupper($alphabet[$randomAlphabetInt]) : $alphabet[$randomAlphabetInt];
 

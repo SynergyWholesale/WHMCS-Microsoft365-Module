@@ -73,8 +73,21 @@ function synergywholesale_microsoft365_CreateAccount($params)
         /**
          * START CREATE NEW TENANT IN SYNERGY
          */
+
+        /** Validate and generate new password if needed */
+        $currentPasswordIsValid = $whmcsLocalDb->checkPasswordMeetRequirement($params['password']);
+        if (!$currentPasswordIsValid) {
+            // Generate new raw valid password
+            $newRawPassword = $whmcsLocalDb->generateValidPassword();
+            // Then encrypt that raw password
+            $newEncryptedPassword = encrypt($newRawPassword);
+            // And save this new encrypted password into database
+            $whmcsLocalDb->updateServiceValidPassword($params['serviceid'], $newEncryptedPassword);
+        }
+
+        // Prepare the data for API call
         $otherData = [
-            'password' => $params['password'],
+            'password' => $newRawPassword ?? $params['password'], // If new password was created, we use that. Otherwise, just use the current one
             'description' => $params['domain'] ?? ($clientObj->description ?? ''),
             'agreement' => !empty($customFields['Customer Agreement']['value']) &&  $customFields['Customer Agreement']['value'] == 'on',
         ];
