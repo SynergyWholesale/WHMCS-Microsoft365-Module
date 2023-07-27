@@ -13,6 +13,20 @@ class ProductEnums
     const CONFIG_GROUP_STANDARD_DESCRIPTION = 'Synergy Wholesale Microsoft 365 Business Standard';
     const CONFIG_GROUP_PREMIUM_NAME = 'Synergy Wholesale Microsoft 365 Business Premium';
     const CONFIG_GROUP_PREMIUM_DESCRIPTION = 'Synergy Wholesale Microsoft 365 Business Premium';
+    const ALL_CONFIG_GROUPS = [
+        [
+            'name' => self::CONFIG_GROUP_BASIC_NAME,
+            'description' => self::CONFIG_GROUP_BASIC_DESCRIPTION,
+        ],
+        [
+            'name' => self::CONFIG_GROUP_STANDARD_NAME,
+            'description' => self::CONFIG_GROUP_STANDARD_DESCRIPTION,
+        ],
+        [
+            'name' => self::CONFIG_GROUP_PREMIUM_NAME,
+            'description' => self::CONFIG_GROUP_PREMIUM_DESCRIPTION,
+        ],
+    ];
 
     /** FOR THESE CONFIG OPTION NAMES, LATER WE WILL ADD SYNERGY PRODUCT'S ID TO PREFIX */
     const CONFIG_OPTION_BASIC_NAME = 'Microsoft 365 Business Basic';

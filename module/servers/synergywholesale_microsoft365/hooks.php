@@ -51,18 +51,23 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
     /** ADD CONFIG GROUP AND CONFIG OPTIONS */
     // At this stage, we should add the config group and config options if this checkbox is checked
     if ($createConfigOptions) {
-        // Prepare data for insert
-        $newConfigGroup = [
-            'name' => ProductEnums::CONFIG_GROUP_BASIC_NAME,
-            'description' => ProductEnums::CONFIG_GROUP_BASIC_DESCRIPTION,
-        ];
+        foreach (ProductEnums::ALL_CONFIG_GROUPS as $configGroup) {
+            // If there is a config option group already exists with this name, we don't add it
+            if ($whmcsLocalDb->configOptionGroupExists($configGroup)) {
+                $error[] = "Create new config option group: [{$configGroup['name']}] (Group Existed)";
+                continue;
+            }
 
-        // Perform action, check success status and add log
-        $created = $whmcsLocalDb->createConfigOptionGroup($newConfigGroup);
-        if ($created) {
-            $success[] = "Create new config option group [{$newConfigGroup['name']}].";
-        } else {
-            $error[] = "Create new config option group: [{$newConfigGroup['name']}]";
+            // Otherwise if not exists, then we create new group
+            // Perform action, check success status and add message
+            if (!$whmcsLocalDb->createConfigOptionGroup($configGroup)) {
+                // If failed, we add error message
+                $error[] = "Create new config option group: [{$configGroup['name']}] (Unknown Error)";
+                continue;
+            }
+
+            // If success, then add success message
+            $success[] = "Create new config option group [{$configGroup['name']}]";
         }
     }
 

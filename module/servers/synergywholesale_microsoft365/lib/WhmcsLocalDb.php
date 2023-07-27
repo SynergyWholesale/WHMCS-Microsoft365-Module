@@ -241,4 +241,14 @@ class WhmcsLocalDb
         return DB::table('tblproductconfiggroups')
             ->insert($data);
     }
+
+    /** Check if a config option group with same name existed */
+    public function configOptionGroupExists($name):bool
+    {
+        $existed = DB::table('tblproductconfiggroups')
+            ->where('name', "{$name}")
+            ->get();
+
+        return !empty($existed);
+    }
 }
