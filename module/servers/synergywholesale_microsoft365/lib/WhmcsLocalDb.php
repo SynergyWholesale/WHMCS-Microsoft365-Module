@@ -209,25 +209,27 @@ class WhmcsLocalDb
     }
 
     /** Auto generate a new password that meets the requirement in MS 365 */
-    public function generateValidPassword()
+    public function generateValidPassword(): string
     {
         // Sketch out the characters that we can pick
         $alphabet = "abcdefghijklmnopqrstuvwxyz";
         $numeric = "0123456789";
-        $special = "!@#$^*()_+~}{[]\:;?><,./-=";
+        $special = "@#$^*()_+~}{[]\:;?><,./-=";
 
         $finalPassword = "";
 
-        $count = strlen($finalPassword);
-        while ($count <= 12) {
-            $randomAlphabetInt = random_int(0, 25);
-            $randomNumericInt = random_int(0, 9);
-            $randomSpecialInt = random_int(0, 25);
+        $count = 0;
+        // Each time we add 3 characters, so the last round we don't want to include in the count, so only loop till maximum count of 9
+        while ($count <= 9) {
+            $randomAlphabetInt = rand(0, 25);
+            $randomNumericInt = rand(0, 9);
+            $randomSpecialInt = rand(0, 25);
 
             $finalPassword .= ($count % 2 == 0) ? strtoupper($alphabet[$randomAlphabetInt]) : $alphabet[$randomAlphabetInt];
 
             $finalPassword .= $numeric[$randomNumericInt];
             $finalPassword .= $special[$randomSpecialInt];
+            $count = strlen($finalPassword);
         }
 
         return $finalPassword;
