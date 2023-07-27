@@ -234,4 +234,11 @@ class WhmcsLocalDb
 
         return $finalPassword;
     }
+
+    /** Create new config option group */
+    public function createConfigOptionGroup($data)
+    {
+        return DB::table('tblproductconfiggroups')
+            ->insert($data);
+    }
 }

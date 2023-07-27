@@ -20,4 +20,11 @@ class ProductEnums
     const CONFIG_OPTION_PREMIUM_NAME = 'Microsoft 365 Business Premium';
     const CONFIG_OPTION_EXCHANGE_ONE = 'Exchange Online (PLan 1)';
     const CONFIG_OPTION_EXCHANGE_TWO = 'Exchange Online (Plan 2)';
+
+    /** CONSTANTS FOR CONFIG OPTION TYPES */
+    const OPTION_TYPE_QUANTITY = 4;
+    const DEFAULT_MIN_QUANTITY = 0;
+    const DEFAULT_MAX_QUANTITY = 0;
+    const DEFAULT_ORDER = 0;
+    const DEFAULT_HIDDEN = 0; // Means false
 }
