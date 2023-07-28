@@ -27,13 +27,6 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
         'configOptionPackage' => $_REQUEST['packageconfigoption'][5],
     ];
 
-    // If for some reasons, this field is empty, then we don't do anything
-    if (empty($configData['configOptionPackage'])) {
-        logActivity("Failed to create or assign config option for product #{$product->id} ({$product->name}). Error: Module's Config Option Package not provided.");
-
-        return 0;
-    }
-
     /** CHECK IF ANY CHECKBOX IS CHECKED */
     $createCustomFields = !empty($configData['createCustomFields']) && $configData['createCustomFields'] == 'on' ;
     $createConfigOptions = !empty($configData['createConfigOptions']) && $configData['createConfigOptions'] == 'on';
@@ -76,11 +69,14 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
             return [$item['group'] => $item];
         })->toArray();
 
+        // Placeholder for all config option groups after being created
+        $allConfigGroupsAfterCreated = [];
+
         foreach (ProductEnums::ALL_CONFIG_GROUPS as $configGroup) {
             /** First we create the config group */
             // If there is a config option group already exists with this name, we don't add it
             if ($whmcsLocalDb->getConfigOptionGroupByName($configGroup['name'])) {
-                $error[] = "Create new config option group: [{$configGroup['name']}] (Group Existed)";
+                $error[] = "Create new config option group: [{$configGroup['name']}] (" . Messages::RECORD_EXISTED . ")";
                 continue;
             }
 
@@ -88,7 +84,7 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
             // Perform action, check success status and add message
             if (!$whmcsLocalDb->createConfigOptionGroup($configGroup)) {
                 // If failed, we add error message
-                $error[] = "Create new config option group: [{$configGroup['name']}] (Unknown Error)";
+                $error[] = "Create new config option group: [{$configGroup['name']}] (" . Messages::UNKNOWN_ERROR . ")";
                 continue;
             }
 
@@ -97,6 +93,8 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
 
             // Get the product we just created so we can add config options to this group
             $newGroup = $whmcsLocalDb->getConfigOptionGroupByName($configGroup['name'], 'get');
+            // Add this new group to the After Created list
+            $allConfigGroupsAfterCreated[$newGroup->name] = collect($newGroup)->toArray();
 
             /** After creating config group, we create the config options inside it */
             // We don't need to check existing config option, because the group was just created
@@ -111,12 +109,24 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
                 // Perform action, check success status and add message
                 if (!$whmcsLocalDb->createConfigOption($configOption)) {
                     // If failed, we add error message
-                    $error[] = "Create new config option for group ({$configGroup['name']}): [{$configOption['optionname']}] (Unknown Error)";
+                    $error[] = "Create new config option for group ({$configGroup['name']}): [{$configOption['optionname']}] (" . Messages::UNKNOWN_ERROR . ")";
                     continue;
                 }
 
                 // If success, then add success message
                 $success[] = "Create new config option [{$configOption['optionname']}] for group ({$configGroup['name']})";
+            }
+        }
+
+        /** After creating all configurations, we check if user wants to assign this product to a config group */
+        // We only assign this product to a config group if user provided the requested package and we have added some groups before
+        if (!empty($configData['configOptionPackage']) && !empty($allConfigGroupsAfterCreated)) {
+            $assignResult = hookSynergywholesale_Microsoft365_assignConfigGroupToProduct($whmcsLocalDb, $configData['configOptionPackage'], $allConfigGroupsAfterCreated, $product->id);
+            // Add log message
+            if ($assignResult['status'] == 'success') {
+                $success[] = $assignResult['message'];
+            } else {
+                $error[] = $assignResult['message'];
             }
         }
     }
@@ -131,3 +141,31 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
 
     logActivity("Finished action for saving product #{$product->id} ({$product->name}).");
 });
+
+function hookSynergywholesale_Microsoft365_assignConfigGroupToProduct(LocalDB $whmcsLocalDb, string $configOptionPackage, array $allConfigGroupsAfterCreated, int $productId): array
+{
+    // Although this case might never happen, but if for some reasons the requested package doesn't exist in the list of groups we just created, we add error message and not do anything
+    if (empty($allConfigGroupsAfterCreated[$configOptionPackage])) {
+        return [
+            'status' => 'error',
+            'message' => "Assign product to config option group ({$configOptionPackage}). Error: Config Group not exist",
+        ];
+    }
+
+    // Start action
+    $data = [
+        'gid' => $allConfigGroupsAfterCreated[$configOptionPackage]['id'],
+        'pid' => $productId,
+    ];
+    if (!$whmcsLocalDb->assignConfigGroupToProduct($data)) {
+        return [
+            'status' => 'error',
+            'message' => "Assign product to config option group ({$configOptionPackage}). Error: " . Messages::UNKNOWN_ERROR,
+        ];
+    }
+
+    return [
+        'status' => 'success',
+        'message' => "Assign product to config option group ({$configOptionPackage})",
+    ];
+}

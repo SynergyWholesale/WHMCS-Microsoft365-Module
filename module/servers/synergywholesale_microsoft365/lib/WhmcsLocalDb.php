@@ -258,4 +258,18 @@ class WhmcsLocalDb
         return DB::table(ModuleEnums::WHMCS_CONFIG_OPTIONS_TABLE)
             ->insert($data);
     }
+
+    /** Assign a config option to a product group */
+    public function assignConfigGroupToProduct($data)
+    {
+        $alreadyAssigned = DB::table(ModuleEnums::WHMCS_PRODUCT_CONFIG_LINKS_TABLE)
+            ->where('gid', $data['gid'])
+            ->where('pid', $data['pid'])
+            ->first();
+
+        return empty($alreadyAssigned)
+            ? DB::table(ModuleEnums::WHMCS_PRODUCT_CONFIG_LINKS_TABLE)
+                ->insert($data)
+            : false;
+    }
 }

@@ -16,4 +16,6 @@ class Messages
     const FAILED_CHANGE_PLAN = '[FAILED] Failed to change plan for service.';
     const FAILED_INVALID_CONFIGURATION = '[FAILED] Unable to perform action due to invalid configuration.';
     const FAILED_MISSING_MODULE_CONFIGS = '[FAILED] Synergy Wholesale Reseller ID or API Key is missing.';
+    const UNKNOWN_ERROR = "Unknown Error";
+    const RECORD_EXISTED = "Record Existed";
 }

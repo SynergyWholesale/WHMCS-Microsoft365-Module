@@ -10,6 +10,7 @@ class ModuleEnums
     const WHMCS_CURRENCY_TABLE = 'tblcurrencies';
     const WHMCS_CONFIG_GROUPS_TABLE = 'tblproductconfiggroups';
     const WHMCS_CONFIG_OPTIONS_TABLE = 'tblproductconfigoptions';
+    const WHMCS_PRODUCT_CONFIG_LINKS_TABLE = 'tblproductconfiglinks';
 
     const STATE_MAP = [
         'Australian Capital Territory' => 'ACT',
