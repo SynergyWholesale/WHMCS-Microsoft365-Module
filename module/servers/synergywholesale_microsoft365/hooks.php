@@ -55,8 +55,9 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
     // At this stage, we should add the config group and config options if this checkbox is checked
     if ($createConfigOptions) {
         /** Validate and perform action for config options and config groups */
-        $validateAndCreateConfigsResult = hookSynergywholesae_Microsoft365_validateAndCreateConfigOptionGroups($whmcsLocalDb, $synergyAPI);
+        $validateAndCreateConfigsResult = hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups($whmcsLocalDb, $synergyAPI);
         $allConfigGroupsFinal = $validateAndCreateConfigsResult['allConfigGroupsFinal'];
+        // Sync the new error and success messages with the current messages list
         $success = $validateAndCreateConfigsResult['success'];
         $error = $validateAndCreateConfigsResult['error'];
 
@@ -80,19 +81,79 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
         }
     }
 
+    /** ADD CUSTOM FIELDS FOR PRODUCT */
+    // At this stage, we should add the custom fields if this checkbox is checked
+    if ($createCustomFields) {
+        /** Validate and perform action for custom fields */
+        $validateAndCreateCustomFieldsResult = hookSynergywholesale_Microsoft365_validateAndCreateCustomFields($whmcsLocalDb, $product->id);
+        // Sync the new error and success messages with the current messages list
+        $success = array_merge($success, $validateAndCreateCustomFieldsResult['success']);
+        $error = array_merge($error, $validateAndCreateCustomFieldsResult['error']);
+
+        /** Last thing for custom fields is we want to disable the 'create custom fields' of this product, so next time user saves this product, we don't repeat these steps */
+        if (!$whmcsLocalDb->disableProductCreateCustomFields($product->id)) {
+            $error[] = "Disable product's Create Custom Fields value";
+        } else {
+            $success[] = "Disable product's Create Custom Fields value";
+        }
+    }
+
+    /** FINALLY AT THE END WE LOG ANY SUCCESS OR ERRORS DURING THE PROCESS */
     if (!empty($success)) {
-        logActivity("Successfully performed the following actions: " . implode(' ---- ', $success));
+        logActivity("[Saving product #{$product->id}] Successfully performed the following actions: " . implode(' ---- ', $success));
     }
 
     if (!empty($error)) {
-        logActivity("Failed to perform the following actions: " . implode(' ---- ', $error));
+        logActivity("[Saving product #{$product->id}] Failed to perform the following actions: " . implode(' ---- ', $error));
     }
 
     logActivity("Finished action for saving product #{$product->id} ({$product->name}).");
 });
 
+/** Function inside hook for logics to check and create custom fields */
+function hookSynergywholesale_Microsoft365_validateAndCreateCustomFields(LocalDB $whmcsLocalDb, int $productId)
+{
+    $success = [];
+    $error = [];
+
+    /** Get product's current custom fields and format it for later validation **/
+    $currentProductCustomFields = $whmcsLocalDb->getProductCustomFields($productId);
+    // If there is some items in to collection, we loop through and format the list, otherwise, just make it an empty array
+    $currentProductCustomFields = count($currentProductCustomFields) > 0
+        ? collect($currentProductCustomFields)->mapToGroups(function ($customField, int $key) {
+            return [$customField->fieldname => $customField];
+        })->toArray()
+        : [];
+
+    /** Loop through our default list to check and create */
+    foreach (ProductEnums::MS365_CUSTOM_FIELDS as $customField) {
+        // Check if this field already existed in the current custom fields list, then we don't create new one
+        if (!empty ($currentProductCustomFields[$customField['fieldname']])) {
+            continue;
+        }
+
+        // Assign the product id to the columns
+        $customField['relid'] = "{$productId}";
+
+        // At this part, we should just create those fields
+        if (!$whmcsLocalDb->createNewProductCustomField($customField)) {
+            // If failed, we add error message
+            $error[] = "Create custom field ({$customField['fieldname']}). Error: " . Messages::UNKNOWN_ERROR;
+            continue;
+        }
+
+        // Otherwise, we add success message
+        $success[] = "Create custom field ({$customField['fieldname']})";
+    }
+
+    return [
+        'success' => $success,
+        'error' => $error,
+    ];
+}
+
 /** Function inside hook for logics to check and create config option groups */
-function hookSynergywholesae_Microsoft365_validateAndCreateConfigOptionGroups(LocalDB $whmcsLocalDb, SynergyAPI $synergyAPI): array
+function hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups(LocalDB $whmcsLocalDb, SynergyAPI $synergyAPI): array
 {
     $success = [];
     $error = [];

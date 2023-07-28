@@ -184,15 +184,6 @@ class WhmcsLocalDb
         return $return;
     }
 
-    public function getServicesFromOrder($orderId)
-    {
-        return DB::table('tblhosting')
-            ->join('tblorders', 'tblorders.id', '=', 'tblhosting.orderid')
-            ->select(['tblhosting.*'])
-            ->where('tblhosting.orderid', '=', $orderId)
-            ->get();
-    }
-
     public function updateServiceValidPassword($serviceId, $newPassword)
     {
         return DB::table('tblhosting')
@@ -278,6 +269,31 @@ class WhmcsLocalDb
             ->where('id', $productId)
             ->update([
                 'configoption3' => ''
+            ]);
+    }
+
+    /** Get all custom fields of a product */
+    public function getProductCustomFields($productId)
+    {
+        return DB::table(ModuleEnums::WHMCS_CUSTOM_FIELDS_TABLE)
+            ->where('relid', $productId)
+            ->get();
+    }
+
+    /** Create new custom fields for product */
+    public function createNewProductCustomField($data)
+    {
+        return DB::table(ModuleEnums::WHMCS_CUSTOM_FIELDS_TABLE)
+            ->insert($data);
+    }
+
+    /** Disable option 'create custom fields' of a product */
+    public function disableProductCreateCustomFields($productId)
+    {
+        return DB::table(ModuleEnums::WHMCS_PRODUCT_TABLE)
+            ->where('id', $productId)
+            ->update([
+                'configoption4' => ''
             ]);
     }
 }

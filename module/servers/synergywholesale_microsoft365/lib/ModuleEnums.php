@@ -11,6 +11,7 @@ class ModuleEnums
     const WHMCS_CONFIG_GROUPS_TABLE = 'tblproductconfiggroups';
     const WHMCS_CONFIG_OPTIONS_TABLE = 'tblproductconfigoptions';
     const WHMCS_PRODUCT_CONFIG_LINKS_TABLE = 'tblproductconfiglinks';
+    const WHMCS_CUSTOM_FIELDS_TABLE = 'tblcustomfields';
 
     const STATE_MAP = [
         'Australian Capital Territory' => 'ACT',

@@ -98,4 +98,47 @@ class ProductEnums
         self::CONFIG_GROUP_STANDARD_NAME => "Microsoft 365 Business Standard",
         self::CONFIG_GROUP_PREMIUM_NAME => "Microsoft 365 Business Premium",
     ];
+
+    /** CONSTANTS FOR CUSTOM FIELD NAMES */
+    const CUSTOM_FIELD_NAME_CUSTOMER_AGREEMENT = 'Customer Agreement';
+    const CUSTOM_FIELD_NAME_REMOTE_TENANT_ID = 'Remote Tenant ID';
+    const CUSTOM_FIELD_NAME_DOMAIN_PREFIX = 'Domain Prefix';
+    const CUSTOM_FIELD_NAME_REMOTE_SUBSCRIPTIONS = 'Remote Subscriptions';
+
+    /** CONSTANTS FOR CUSTOM FIELD TYPES  */
+    const CUSTOM_FIELD_TYPE_CHECKBOX = 'tickbox';
+    const CUSTOM_FIELD_TYPE_TEXT = 'text';
+    const CUSTOM_FIELD_TARGET_PRODUCT = 'product';
+
+    /** Define all the custom fields' basic properties */
+    const MS365_CUSTOM_FIELDS = [
+        [
+            'fieldname' => self::CUSTOM_FIELD_NAME_CUSTOMER_AGREEMENT,
+            'type' => self::CUSTOM_FIELD_TARGET_PRODUCT,
+            'fieldtype' => self::CUSTOM_FIELD_TYPE_CHECKBOX,
+            'required' => 'on',
+            'sortorder' => 0,
+        ],
+        [
+            'fieldname' => self::CUSTOM_FIELD_NAME_REMOTE_TENANT_ID,
+            'type' => self::CUSTOM_FIELD_TARGET_PRODUCT,
+            'fieldtype' => self::CUSTOM_FIELD_TYPE_TEXT,
+            'adminonly' => 'on',
+            'sortorder' => 0,
+        ],
+        [
+            'fieldname' => self::CUSTOM_FIELD_NAME_DOMAIN_PREFIX,
+            'type' => self::CUSTOM_FIELD_TARGET_PRODUCT,
+            'fieldtype' => self::CUSTOM_FIELD_TYPE_TEXT,
+            'adminonly' => 'on',
+            'sortorder' => 0,
+        ],
+        [
+            'fieldname' => self::CUSTOM_FIELD_NAME_REMOTE_SUBSCRIPTIONS,
+            'type' => self::CUSTOM_FIELD_TARGET_PRODUCT,
+            'fieldtype' => self::CUSTOM_FIELD_TYPE_TEXT,
+            'adminonly' => 'on',
+            'sortorder' => 0,
+        ],
+    ];
 }
