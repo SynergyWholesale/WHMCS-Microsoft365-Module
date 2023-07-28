@@ -272,4 +272,14 @@ class WhmcsLocalDb
                 ->insert($data)
             : false;
     }
+
+    /** Disable option 'create config option' of a product */
+    public function disableProductCreateConfigOptions($productId)
+    {
+        return DB::table(ModuleEnums::WHMCS_PRODUCT_TABLE)
+            ->where('id', $productId)
+            ->update([
+                'configoption3' => ''
+            ]);
+    }
 }

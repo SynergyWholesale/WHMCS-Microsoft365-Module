@@ -129,6 +129,13 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
                 $error[] = $assignResult['message'];
             }
         }
+
+        /** Last thing for config option is we want to disable the 'create config option' of this product, so next time user saves this product, we don't repeat these steps */
+        if (!$whmcsLocalDb->disableProductCreateConfigOptions($product->id)) {
+            $error[] = "Disable product's Create Config Options value";
+        } else {
+            $success[] = "Disable product's Create Config Options value";
+        }
     }
 
     if (!empty($success)) {
