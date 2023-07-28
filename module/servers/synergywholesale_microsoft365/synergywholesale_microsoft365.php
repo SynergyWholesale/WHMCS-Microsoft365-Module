@@ -25,10 +25,12 @@ function synergywholesale_microsoft365_ConfigOptions()
         'createConfigOptions' => [
             'FriendlyName' => 'Create Configuration Options?',
             'Type' => 'yesno',
+            'Description' => 'Start creating default configuration options for Microsoft 365 products'
         ],
         'createCustomFields' => [
             'FriendlyName' => 'Create Custom Fields?',
             'Type' => 'yesno',
+            'Description' => 'Start creating default custom fields for Microsoft 365 products'
         ],
         'configGroupAssign' => [
             'FriendlyName' => 'Configuration Group Assign',
@@ -69,20 +71,20 @@ function synergywholesale_microsoft365_CreateAccount($params)
     /**
      * VALIDATE IF THIS TENANT HAS BEEN CREATED IN SYNERGY
      */
-    if (!empty($customFields['Remote Tenant ID']['value'])) {
-        $remoteTenant = $synergyAPI->getTenantDetails($customFields['Remote Tenant ID']['value']);
+    if (!empty($customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_TENANT_ID]['value'])) {
+        $remoteTenant = $synergyAPI->getTenantDetails($customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_TENANT_ID]['value']);
 
         if ($remoteTenant) {
             // ConvertTo Array
             $remoteTenant = json_decode(json_encode($remoteTenant), true);
 
             // Logs for error
-            logModuleCall(ModuleEnums::MODULE_NAME, 'CreateAccount', $customFields['Remote Tenant ID']['value'], [
+            logModuleCall(ModuleEnums::MODULE_NAME, 'CreateAccount', $customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_TENANT_ID]['value'], [
                 'status' => $remoteTenant['status'],
                 'message' => $remoteTenant['errorMessage'],
             ], Messages::TENANT_EXISTED);
 
-            $tenantId = $customFields['Remote Tenant ID']['value'];
+            $tenantId = $customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_TENANT_ID]['value'];
         }
     } else {
         /**
@@ -126,8 +128,8 @@ function synergywholesale_microsoft365_CreateAccount($params)
         }
 
         // Update new values of Remote Tenant ID, Domain Prefix into custom fields
-        $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Tenant ID']['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
-        $whmcsLocalDb->updateCustomFieldValues($customFields['Domain Prefix']['fieldId'], $params['serviceid'], $newTenantResult['domainPrefix']);
+        $whmcsLocalDb->updateCustomFieldValues($customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_TENANT_ID]['fieldId'], $params['serviceid'], $newTenantResult['identifier']);
+        $whmcsLocalDb->updateCustomFieldValues($customFields[ProductEnums::CUSTOM_FIELD_NAME_DOMAIN_PREFIX]['fieldId'], $params['serviceid'], $newTenantResult['domainPrefix']);
 
         // Logs for successful
         logModuleCall(ModuleEnums::MODULE_NAME, 'CreateAccount', $newTenantRequest, [
@@ -202,7 +204,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
     // Retrieve list of custom fields of this service
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
     // Split list of subscription IDs into an array for looping through
-    $subscriptionList = explode(', ', $customFields['Remote Subscriptions']['value']) ?? [];
+    $subscriptionList = explode(', ', $customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_SUBSCRIPTIONS]['value']) ?? [];
 
     // If the subscription list is not empty, that means the user runs "create" command with some subscriptions existed
     // We want to add new subscriptions to the list while keep the old subscriptions from previous package as well if applicable
@@ -226,7 +228,7 @@ function synergywholesale_microsoft365_CreateAccount($params)
     }
 
     // Update new records to local database
-    $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $finalRemoteSubscriptionData));
+    $whmcsLocalDb->updateCustomFieldValues($customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_SUBSCRIPTIONS]['fieldId'], $params['serviceid'], implode(', ', $finalRemoteSubscriptionData));
 
     // Logs for successful
     logModuleCall(ModuleEnums::MODULE_NAME, 'CreateAccount', $newSubscriptionsRequest, [
@@ -251,7 +253,7 @@ function synergywholesale_microsoft365_SuspendAccount($params)
     // Retrieve list of custom fields of this service
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
     // Split list of subscription IDs into an array for looping through
-    $subscriptionList = explode(', ', $customFields['Remote Subscriptions']['value']) ?? [];
+    $subscriptionList = explode(', ', $customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_SUBSCRIPTIONS]['value']) ?? [];
 
     if (empty($subscriptionList)) {
         // Logs for error
@@ -349,7 +351,7 @@ function synergywholesale_microsoft365_UnsuspendAccount($params)
     // Retrieve list of custom fields of this service
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
     // Split list of subscription IDs into an array for looping through
-    $subscriptionList = explode(', ', $customFields['Remote Subscriptions']['value']) ?? [];
+    $subscriptionList = explode(', ', $customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_SUBSCRIPTIONS]['value']) ?? [];
 
     if (empty($subscriptionList)) {
         // Logs for error
@@ -449,7 +451,7 @@ function synergywholesale_microsoft365_TerminateAccount($params)
     // Retrieve list of custom fields of this service
     $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
     // Split list of subscription IDs into an array for looping through
-    $subscriptionList = explode(', ', $customFields['Remote Subscriptions']['value']) ?? [];
+    $subscriptionList = explode(', ', $customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_SUBSCRIPTIONS]['value']) ?? [];
 
     if (empty($subscriptionList)) {
         // Logs for error
@@ -676,7 +678,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
 
     /** Now we want to check if $subscriptionsToCreate not empty, then we purchase subscriptions */
     if (!empty($subscriptionsToCreate)) {
-        $tenantId = $params['customfields']['Remote Tenant ID'];
+        $tenantId = $params['customfields'][ProductEnums::CUSTOM_FIELD_NAME_REMOTE_TENANT_ID];
 
         // Send API request to SWS for purchasing new subscription(s)
         $purchaseResult = $synergyAPI->purchaseSubscription(array_merge(['subscriptionOrder' => $subscriptionsToCreate], ['identifier' => $tenantId]));
@@ -721,7 +723,7 @@ function synergywholesale_microsoft365_ChangePackage($params)
             // Retrieve the custom fields of this service
             $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
             // Update records to local database
-            $whmcsLocalDb->updateCustomFieldValues($customFields['Remote Subscriptions']['fieldId'], $params['serviceid'], implode(', ', $updateValue));
+            $whmcsLocalDb->updateCustomFieldValues($customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_SUBSCRIPTIONS]['fieldId'], $params['serviceid'], implode(', ', $updateValue));
         }
     }
 
@@ -767,8 +769,8 @@ function synergywholesale_microsoft365_ClientArea($params)
     $configOptions = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'compare');
 
     // We only want to display Domain Prefix into client area
-    $customFields = collect($customFields)->only('Domain Prefix')->toArray();
-    $customFields['Domain Prefix']['value'] = "{$customFields['Domain Prefix']['value']}.onmicrosoft.com";
+    $customFields = collect($customFields)->only(ProductEnums::CUSTOM_FIELD_NAME_DOMAIN_PREFIX)->toArray();
+    $customFields[ProductEnums::CUSTOM_FIELD_NAME_DOMAIN_PREFIX]['value'] = "{$customFields[ProductEnums::CUSTOM_FIELD_NAME_DOMAIN_PREFIX]['value']}.onmicrosoft.com";
 
     // Retrieve the list of current product's config option IDs
     $currentProductConfigOptionIds = $whmcsLocalDb->getRemoteProductIdsFromPackage($params['pid']);

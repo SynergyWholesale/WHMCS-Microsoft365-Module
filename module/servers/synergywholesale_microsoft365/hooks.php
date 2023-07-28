@@ -3,10 +3,7 @@
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\SynergyAPI;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\WhmcsLocalDb as LocalDB;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\Messages;
-use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ModuleEnums;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ProductEnums;
-use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ServiceStatuses as Status;
-use WHMCS\Database\Capsule as DB;
 
 if (!defined('WHMCS'))
     die('You cannot access this file directly.');
@@ -22,9 +19,9 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
 
     // Get its module's config option values
     $configData = [
-        'createConfigOptions' => $_REQUEST['packageconfigoption'][3],
-        'createCustomFields' => $_REQUEST['packageconfigoption'][4],
-        'configOptionPackage' => $_REQUEST['packageconfigoption'][5],
+        'createConfigOptions' => $product->configoption3,
+        'createCustomFields' => $product->configoption4,
+        'configOptionPackage' => $product->configoption5,
     ];
 
     /** CHECK IF ANY CHECKBOX IS CHECKED */
@@ -33,19 +30,19 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
 
     if (!$createCustomFields && !$createConfigOptions) {
         // If these 2 checkboxes are not checked, that means we don't need to do anything else, just end the hook
-        logActivity("Product #{$product->id} ({$product->name}) was saved but no need to create or assign config options and custom fields.");
+        logActivity("Product #{$product->id} ({$product->name}) was saved but no further actions are required.");
 
         return 0;
     }
     /** At this part, it means user wants to create new fields, we check if Synergy API credentials have been saved */
     // If user hasn't saved Synergy Reseller ID and API Key, then we error out
-    if (empty($_REQUEST['packageconfigoption'][1]) || empty($_REQUEST['packageconfigoption'][2])) {
-        logActivity("Failed to create or assign config option for product #{$product->id} ({$product->name}). Error: Synergy Wholesae API credentials not provided");
+    if (empty($product->configoption1) || empty($product->configoption2)) {
+        logActivity("Failed to create or assign config option for product #{$product->id} ({$product->name}). Error: Synergy Wholesale API credentials not provided");
 
         return 0;
     }
     // If the credentials were provided, we create new Synergy API instance
-    $synergyAPI = new SynergyAPI($_REQUEST['packageconfigoption'][1], $_REQUEST['packageconfigoption'][2]);
+    $synergyAPI = new SynergyAPI($product->configoption1, $product->configoption2);
 
     // We want to log any success or error actions
     $success = [];
@@ -56,6 +53,7 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
     if ($createConfigOptions) {
         /** Validate and perform action for config options and config groups */
         $validateAndCreateConfigsResult = hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups($whmcsLocalDb, $synergyAPI);
+        // Sync the list of config groups that we just retrieved from the above function
         $allConfigGroupsFinal = $validateAndCreateConfigsResult['allConfigGroupsFinal'];
         // Sync the new error and success messages with the current messages list
         $success = $validateAndCreateConfigsResult['success'];
@@ -65,6 +63,7 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
         // We only assign this product to a config group if user provided the requested package and we have added some groups before
         if (!empty($configData['configOptionPackage']) && !empty($allConfigGroupsFinal)) {
             $assignResult = hookSynergywholesale_Microsoft365_assignConfigGroupToProduct($whmcsLocalDb, $configData['configOptionPackage'], $allConfigGroupsFinal, $product->id);
+
             // Add log message
             if ($assignResult['status'] == 'success') {
                 $success[] = $assignResult['message'];
@@ -100,14 +99,12 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
 
     /** FINALLY AT THE END WE LOG ANY SUCCESS OR ERRORS DURING THE PROCESS */
     if (!empty($success)) {
-        logActivity("[Saving product #{$product->id}] Successfully performed the following actions: " . implode(' ---- ', $success));
+        logActivity("[Save product #{$product->id} ({$product->name})] Successfully performed the following actions: " . implode(' ---- ', $success));
     }
 
     if (!empty($error)) {
-        logActivity("[Saving product #{$product->id}] Failed to perform the following actions: " . implode(' ---- ', $error));
+        logActivity("[Save product #{$product->id} ({$product->name})] Failed to perform the following actions: " . implode(' ---- ', $error));
     }
-
-    logActivity("Finished action for saving product #{$product->id} ({$product->name}).");
 });
 
 /** Function inside hook for logics to check and create custom fields */
@@ -208,7 +205,6 @@ function hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups(L
             $configOption = collect($configOption)->except('group')->toArray();
             // Append column 'gid' to request data
             $configOption['gid'] = $newGroup->id;
-            logActivity("Config options for group {$configGroup['name']} is: " . print_r($configOption,true));
 
             // Perform action, check success status and add message
             if (!$whmcsLocalDb->createConfigOption($configOption)) {
@@ -248,7 +244,7 @@ function hookSynergywholesale_Microsoft365_assignConfigGroupToProduct(LocalDB $w
     if (!$whmcsLocalDb->assignConfigGroupToProduct($data)) {
         return [
             'status' => 'error',
-            'message' => "Assign product to config option group ({$configOptionPackage}). Error: " . Messages::UNKNOWN_ERROR,
+            'message' => "Assign product to config option group ({$configOptionPackage}). Error: Config Group Already Assigned.",
         ];
     }
 
