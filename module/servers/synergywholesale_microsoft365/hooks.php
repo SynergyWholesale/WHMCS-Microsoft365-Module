@@ -54,70 +54,11 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
     /** ADD CONFIG GROUP AND CONFIG OPTIONS */
     // At this stage, we should add the config group and config options if this checkbox is checked
     if ($createConfigOptions) {
-        // Get products list from Synergy API and format it so we can assign it to local DB config option name
-        $productsListResponse = $synergyAPI->getProductsList();
-        $productsList = $productsListResponse->subscriptionList[0];
-        $productIdPlaceholder = [];
-        foreach ($productsList as $productRow) {
-            $productIdPlaceholder[$productRow->productName] = $productRow->productId;
-        }
-
-        // Now assign the id into the config option names
-        $allConfigOptions = collect(ProductEnums::ALL_CONFIG_OPTIONS)->mapToGroups(function (array $item, int $key) use ($productIdPlaceholder) {
-            $item['optionname'] = "{$productIdPlaceholder[$item['optionname']]}|{$item['optionname']}";
-
-            return [$item['group'] => $item];
-        })->toArray();
-
-        // Placeholder for all config option groups after being created
-        $allConfigGroupsFinal = [];
-
-        foreach (ProductEnums::ALL_CONFIG_GROUPS as $configGroup) {
-            /** First we create the config group */
-            // If there is a config option group already exists with this name, we don't create another one, instead just add it to the final list
-            $existingGroup = $whmcsLocalDb->getConfigOptionGroupByName($configGroup['name']);
-            if (!empty($existingGroup)) {
-                $allConfigGroupsFinal[$existingGroup->name] = collect($existingGroup)->toArray();
-                continue;
-            }
-
-            // Otherwise if not exists, then we create new group
-            // Perform action, check success status and add message
-            if (!$whmcsLocalDb->createConfigOptionGroup($configGroup)) {
-                // If failed, we add error message
-                $error[] = "Create new config option group: [{$configGroup['name']}] (" . Messages::UNKNOWN_ERROR . ")";
-                continue;
-            }
-
-            // If success, then add success message
-            $success[] = "Create new config option group [{$configGroup['name']}]";
-
-            // Get the product we just created so we can add config options to this group
-            $newGroup = $whmcsLocalDb->getConfigOptionGroupByName($configGroup['name'], 'get');
-            // Add this new group to the After Created list
-            $allConfigGroupsFinal[$newGroup->name] = collect($newGroup)->toArray();
-
-            /** After creating config group, we create the config options inside it */
-            // We don't need to check existing config option, because the group was just created
-            // If we have many config options with same name, it's okay because they are within different groups
-            foreach ($allConfigOptions[$configGroup['name']] as $configOption) {
-                // We exclude column 'group' out of the request data when create new config option
-                $configOption = collect($configOption)->except('group')->toArray();
-                // Append column 'gid' to request data
-                $configOption['gid'] = $newGroup->id;
-                logActivity("Config options for group {$configGroup['name']} is: " . print_r($configOption,true));
-
-                // Perform action, check success status and add message
-                if (!$whmcsLocalDb->createConfigOption($configOption)) {
-                    // If failed, we add error message
-                    $error[] = "Create new config option for group ({$configGroup['name']}): [{$configOption['optionname']}] (" . Messages::UNKNOWN_ERROR . ")";
-                    continue;
-                }
-
-                // If success, then add success message
-                $success[] = "Create new config option [{$configOption['optionname']}] for group ({$configGroup['name']})";
-            }
-        }
+        /** Validate and perform action for config options and config groups */
+        $validateAndCreateConfigsResult = hookSynergywholesae_Microsoft365_validateAndCreateConfigOptionGroups($whmcsLocalDb, $synergyAPI);
+        $allConfigGroupsFinal = $validateAndCreateConfigsResult['allConfigGroupsFinal'];
+        $success = $validateAndCreateConfigsResult['success'];
+        $error = $validateAndCreateConfigsResult['error'];
 
         /** After creating all configurations, we check if user wants to assign this product to a config group */
         // We only assign this product to a config group if user provided the requested package and we have added some groups before
@@ -150,6 +91,84 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
     logActivity("Finished action for saving product #{$product->id} ({$product->name}).");
 });
 
+/** Function inside hook for logics to check and create config option groups */
+function hookSynergywholesae_Microsoft365_validateAndCreateConfigOptionGroups(LocalDB $whmcsLocalDb, SynergyAPI $synergyAPI): array
+{
+    $success = [];
+    $error = [];
+    // Get products list from Synergy API and format it so we can assign it to local DB config option name
+    $productsListResponse = $synergyAPI->getProductsList();
+    $productsList = $productsListResponse->subscriptionList[0];
+    $productIdPlaceholder = [];
+    foreach ($productsList as $productRow) {
+        $productIdPlaceholder[$productRow->productName] = $productRow->productId;
+    }
+
+    // Now assign the id into the config option names
+    $allConfigOptions = collect(ProductEnums::ALL_CONFIG_OPTIONS)->mapToGroups(function (array $item, int $key) use ($productIdPlaceholder) {
+        $item['optionname'] = "{$productIdPlaceholder[$item['optionname']]}|{$item['optionname']}";
+
+        return [$item['group'] => $item];
+    })->toArray();
+
+    // Placeholder for all config option groups after being created
+    $allConfigGroupsFinal = [];
+
+    foreach (ProductEnums::ALL_CONFIG_GROUPS as $configGroup) {
+        /** First we create the config group */
+        // If there is a config option group already exists with this name, we don't create another one, instead just add it to the final list
+        $existingGroup = $whmcsLocalDb->getConfigOptionGroupByName($configGroup['name']);
+        if (!empty($existingGroup)) {
+            $allConfigGroupsFinal[$existingGroup->name] = collect($existingGroup)->toArray();
+            continue;
+        }
+
+        // Otherwise if not exists, then we create new group
+        // Perform action, check success status and add message
+        if (!$whmcsLocalDb->createConfigOptionGroup($configGroup)) {
+            // If failed, we add error message
+            $error[] = "Create new config option group: [{$configGroup['name']}] (" . Messages::UNKNOWN_ERROR . ")";
+            continue;
+        }
+
+        // If success, then add success message
+        $success[] = "Create new config option group [{$configGroup['name']}]";
+
+        // Get the product we just created so we can add config options to this group
+        $newGroup = $whmcsLocalDb->getConfigOptionGroupByName($configGroup['name'], 'get');
+        // Add this new group to the After Created list
+        $allConfigGroupsFinal[$newGroup->name] = collect($newGroup)->toArray();
+
+        /** After creating config group, we create the config options inside it */
+        // We don't need to check existing config option, because the group was just created
+        // If we have many config options with same name, it's okay because they are within different groups
+        foreach ($allConfigOptions[$configGroup['name']] as $configOption) {
+            // We exclude column 'group' out of the request data when create new config option
+            $configOption = collect($configOption)->except('group')->toArray();
+            // Append column 'gid' to request data
+            $configOption['gid'] = $newGroup->id;
+            logActivity("Config options for group {$configGroup['name']} is: " . print_r($configOption,true));
+
+            // Perform action, check success status and add message
+            if (!$whmcsLocalDb->createConfigOption($configOption)) {
+                // If failed, we add error message
+                $error[] = "Create new config option for group ({$configGroup['name']}): [{$configOption['optionname']}] (" . Messages::UNKNOWN_ERROR . ")";
+                continue;
+            }
+
+            // If success, then add success message
+            $success[] = "Create new config option [{$configOption['optionname']}] for group ({$configGroup['name']})";
+        }
+    }
+
+    return [
+        'allConfigGroupsFinal' => $allConfigGroupsFinal,
+        'success' => $success,
+        'error' => $error,
+    ];
+}
+
+/** Function inside hook for logics to assign config group to product */
 function hookSynergywholesale_Microsoft365_assignConfigGroupToProduct(LocalDB $whmcsLocalDb, string $configOptionPackage, array $allConfigGroupsFinal, int $productId): array
 {
     // Although this case might never happen, but if for some reasons the requested package doesn't exist in the list of groups we just created, we add error message and not do anything
