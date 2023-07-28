@@ -70,13 +70,14 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
         })->toArray();
 
         // Placeholder for all config option groups after being created
-        $allConfigGroupsAfterCreated = [];
+        $allConfigGroupsFinal = [];
 
         foreach (ProductEnums::ALL_CONFIG_GROUPS as $configGroup) {
             /** First we create the config group */
-            // If there is a config option group already exists with this name, we don't add it
-            if ($whmcsLocalDb->getConfigOptionGroupByName($configGroup['name'])) {
-                $error[] = "Create new config option group: [{$configGroup['name']}] (" . Messages::RECORD_EXISTED . ")";
+            // If there is a config option group already exists with this name, we don't create another one, instead just add it to the final list
+            $existingGroup = $whmcsLocalDb->getConfigOptionGroupByName($configGroup['name']);
+            if (!empty($existingGroup)) {
+                $allConfigGroupsFinal[$existingGroup->name] = collect($existingGroup)->toArray();
                 continue;
             }
 
@@ -94,7 +95,7 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
             // Get the product we just created so we can add config options to this group
             $newGroup = $whmcsLocalDb->getConfigOptionGroupByName($configGroup['name'], 'get');
             // Add this new group to the After Created list
-            $allConfigGroupsAfterCreated[$newGroup->name] = collect($newGroup)->toArray();
+            $allConfigGroupsFinal[$newGroup->name] = collect($newGroup)->toArray();
 
             /** After creating config group, we create the config options inside it */
             // We don't need to check existing config option, because the group was just created
@@ -120,8 +121,8 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
 
         /** After creating all configurations, we check if user wants to assign this product to a config group */
         // We only assign this product to a config group if user provided the requested package and we have added some groups before
-        if (!empty($configData['configOptionPackage']) && !empty($allConfigGroupsAfterCreated)) {
-            $assignResult = hookSynergywholesale_Microsoft365_assignConfigGroupToProduct($whmcsLocalDb, $configData['configOptionPackage'], $allConfigGroupsAfterCreated, $product->id);
+        if (!empty($configData['configOptionPackage']) && !empty($allConfigGroupsFinal)) {
+            $assignResult = hookSynergywholesale_Microsoft365_assignConfigGroupToProduct($whmcsLocalDb, $configData['configOptionPackage'], $allConfigGroupsFinal, $product->id);
             // Add log message
             if ($assignResult['status'] == 'success') {
                 $success[] = $assignResult['message'];
@@ -149,10 +150,10 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
     logActivity("Finished action for saving product #{$product->id} ({$product->name}).");
 });
 
-function hookSynergywholesale_Microsoft365_assignConfigGroupToProduct(LocalDB $whmcsLocalDb, string $configOptionPackage, array $allConfigGroupsAfterCreated, int $productId): array
+function hookSynergywholesale_Microsoft365_assignConfigGroupToProduct(LocalDB $whmcsLocalDb, string $configOptionPackage, array $allConfigGroupsFinal, int $productId): array
 {
     // Although this case might never happen, but if for some reasons the requested package doesn't exist in the list of groups we just created, we add error message and not do anything
-    if (empty($allConfigGroupsAfterCreated[$configOptionPackage])) {
+    if (empty($allConfigGroupsFinal[$configOptionPackage])) {
         return [
             'status' => 'error',
             'message' => "Assign product to config option group ({$configOptionPackage}). Error: Config Group not exist",
@@ -161,7 +162,7 @@ function hookSynergywholesale_Microsoft365_assignConfigGroupToProduct(LocalDB $w
 
     // Start action
     $data = [
-        'gid' => $allConfigGroupsAfterCreated[$configOptionPackage]['id'],
+        'gid' => $allConfigGroupsFinal[$configOptionPackage]['id'],
         'pid' => $productId,
     ];
     if (!$whmcsLocalDb->assignConfigGroupToProduct($data)) {

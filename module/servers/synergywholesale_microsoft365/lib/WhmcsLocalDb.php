@@ -243,13 +243,11 @@ class WhmcsLocalDb
     }
 
     /** Check if a config option group with same name existed */
-    public function getConfigOptionGroupByName($name, string $action = 'check')
+    public function getConfigOptionGroupByName($name)
     {
-        $record = DB::table(ModuleEnums::WHMCS_CONFIG_GROUPS_TABLE)
+        return DB::table(ModuleEnums::WHMCS_CONFIG_GROUPS_TABLE)
             ->where('name', "{$name}")
             ->first();
-
-        return $action == 'get' ? $record : !empty($record);
     }
 
     /** Create new config option that belongs to a config group */
