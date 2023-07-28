@@ -70,12 +70,11 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
         }
 
         // Now assign the id into the config option names
-        $allConfigOptions = collect(ProductEnums::ALL_CONFIG_OPTIONS)->mapToGroups(function(array $item, int $key) use ($productIdPlaceholder) {
+        $allConfigOptions = collect(ProductEnums::ALL_CONFIG_OPTIONS)->mapToGroups(function (array $item, int $key) use ($productIdPlaceholder) {
             $item['optionname'] = "{$productIdPlaceholder[$item['optionname']]}|{$item['optionname']}";
 
             return [$item['group'] => $item];
         })->toArray();
-
 
         foreach (ProductEnums::ALL_CONFIG_GROUPS as $configGroup) {
             /** First we create the config group */
@@ -105,6 +104,7 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
             foreach ($allConfigOptions[$configGroup['name']] as $configOption) {
                 // We exclude column 'group' out of the request data when create new config option
                 $configOption = collect($configOption)->except('group')->toArray();
+                // Append column 'gid' to request data
                 $configOption['gid'] = $newGroup->id;
                 logActivity("Config options for group {$configGroup['name']} is: " . print_r($configOption,true));
 

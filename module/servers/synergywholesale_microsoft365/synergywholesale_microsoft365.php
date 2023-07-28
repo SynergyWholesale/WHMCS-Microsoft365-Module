@@ -4,6 +4,7 @@ use WHMCS\Module\Server\SynergywholesaleMicrosoft365\SynergyAPI;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\WhmcsLocalDb as LocalDB;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\Messages;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ModuleEnums;
+use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ProductEnums;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ServiceStatuses as Status;
 
 function synergywholesale_microsoft365_ConfigOptions()
@@ -32,8 +33,8 @@ function synergywholesale_microsoft365_ConfigOptions()
         'configGroupAssign' => [
             'FriendlyName' => 'Configuration Group Assign',
             'Type' => 'dropdown',
-            'Options' => ModuleEnums::MS365_PACKAGES,
-            'Default' => ModuleEnums::MS365_BASIC,
+            'Options' => ProductEnums::MS365_PACKAGES,
+            'Default' => ProductEnums::CONFIG_GROUP_BASIC_NAME,
         ],
     ];
 }
