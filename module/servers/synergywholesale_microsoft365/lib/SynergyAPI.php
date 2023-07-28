@@ -42,7 +42,7 @@ class SynergyAPI
      * @param $data (body request of the API call)
      * @return array|mixed|string
      */
-    private function sendRequest($action, $data)
+    private function sendRequest($action, array $data = [])
     {
         $request = array_merge($data, $this->auth);
 
@@ -115,5 +115,10 @@ class SynergyAPI
     public function updateSubscriptionQuantity($data)
     {
         return $this->sendRequest('subscriptionUpdateQuantity', $data);
+    }
+
+    public function getProductsList()
+    {
+        return $this->sendRequest('subscriptionListPurchasable');
     }
 }

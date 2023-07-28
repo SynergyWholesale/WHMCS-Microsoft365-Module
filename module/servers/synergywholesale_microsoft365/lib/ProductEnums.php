@@ -18,7 +18,7 @@ class ProductEnums
     const CONFIG_OPTION_BASIC_NAME = 'Microsoft 365 Business Basic';
     const CONFIG_OPTION_STANDARD_NAME = 'Microsoft 365 Business Standard';
     const CONFIG_OPTION_PREMIUM_NAME = 'Microsoft 365 Business Premium';
-    const CONFIG_OPTION_EXCHANGE_ONE = 'Exchange Online (PLan 1)';
+    const CONFIG_OPTION_EXCHANGE_ONE = 'Exchange Online (Plan 1)';
     const CONFIG_OPTION_EXCHANGE_TWO = 'Exchange Online (Plan 2)';
 
     /** CONSTANTS FOR CONFIG OPTION TYPES */
@@ -31,6 +31,7 @@ class ProductEnums
     /** CONSTANTS FOR ALL GROUPS AND ALL OPTIONS */
     const ALL_CONFIG_OPTIONS = [
         [
+            'group' => self::CONFIG_GROUP_BASIC_NAME,
             'optionname' => self::CONFIG_OPTION_BASIC_NAME,
             'optiontype' => self::OPTION_TYPE_QUANTITY,
             'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
@@ -39,6 +40,7 @@ class ProductEnums
             'hidden' => self::DEFAULT_HIDDEN,
         ],
         [
+            'group' => self::CONFIG_GROUP_STANDARD_NAME,
             'optionname' => self::CONFIG_OPTION_STANDARD_NAME,
             'optiontype' => self::OPTION_TYPE_QUANTITY,
             'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
@@ -47,7 +49,26 @@ class ProductEnums
             'hidden' => self::DEFAULT_HIDDEN,
         ],
         [
+            'group' => self::CONFIG_GROUP_PREMIUM_NAME,
             'optionname' => self::CONFIG_OPTION_PREMIUM_NAME,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_STANDARD_NAME,
+            'optionname' => self::CONFIG_OPTION_EXCHANGE_ONE,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_STANDARD_NAME,
+            'optionname' => self::CONFIG_OPTION_EXCHANGE_TWO,
             'optiontype' => self::OPTION_TYPE_QUANTITY,
             'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
             'qtymaximum' => self::DEFAULT_MAX_QUANTITY,

@@ -8,6 +8,8 @@ class ModuleEnums
     const WHMCS_HOSTING_TABLE = 'tblhosting';
     const WHMCS_PRODUCT_TABLE = 'tblproducts';
     const WHMCS_CURRENCY_TABLE = 'tblcurrencies';
+    const WHMCS_CONFIG_GROUPS_TABLE = 'tblproductconfiggroups';
+    const WHMCS_CONFIG_OPTIONS_TABLE = 'tblproductconfigoptions';
 
     const STATE_MAP = [
         'Australian Capital Territory' => 'ACT',

@@ -238,24 +238,24 @@ class WhmcsLocalDb
     /** Create new config option group */
     public function createConfigOptionGroup($data)
     {
-        return DB::table('tblproductconfiggroups')
+        return DB::table(ModuleEnums::WHMCS_CONFIG_GROUPS_TABLE)
             ->insert($data);
     }
 
     /** Check if a config option group with same name existed */
-    public function configOptionGroupExists($name):bool
+    public function getConfigOptionGroupByName($name, string $action = 'check')
     {
-        $existed = DB::table('tblproductconfiggroups')
+        $record = DB::table(ModuleEnums::WHMCS_CONFIG_GROUPS_TABLE)
             ->where('name', "{$name}")
-            ->get();
+            ->first();
 
-        return !empty($existed);
+        return $action == 'get' ? $record : !empty($record);
     }
 
     /** Create new config option that belongs to a config group */
     public function createConfigOption($data)
     {
-        return DB::table('tblproductconfigoptions')
+        return DB::table(ModuleEnums::WHMCS_CONFIG_OPTIONS_TABLE)
             ->insert($data);
     }
 }
