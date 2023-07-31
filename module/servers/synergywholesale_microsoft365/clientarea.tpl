@@ -40,7 +40,7 @@
         <div class="section-row w-full flex gap-2 border-solid border-b-[0.5px] border-gray-200 py-1 items-end">
             <div class="section-row-title w-[30%] font-semibold">Domain Username</div>
             <div class="section-row-value w-[70%] text-sm">
-                {$service->username}
+                admin@{$customFields['Domain Prefix']['value']}
                 <a info="Login via Microsoft 365 Portal" href="https://portal.office.com/" target="_blank" class="text-blue-500 font-semibold ml-2 hover:text-blue-700">Login MS 365 Portal</a>
             </div>
         </div>
