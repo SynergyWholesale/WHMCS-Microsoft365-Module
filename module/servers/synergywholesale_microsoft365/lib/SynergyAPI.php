@@ -117,6 +117,18 @@ class SynergyAPI
         return $this->sendRequest('subscriptionUpdateQuantity', $data);
     }
 
+    /** Get all subscriptions of a tenant */
+    public function getSubscriptionsList(int $id)
+    {
+        if (empty($id)) {
+            return [
+                'error' => 'Cannot query with empty input value.',
+            ];
+        }
+
+        return $this->sendRequest('subscriptionListClientSubscriptions', ['identifier' => $id]);
+    }
+
     public function getProductsList()
     {
         return $this->sendRequest('subscriptionListPurchasable');

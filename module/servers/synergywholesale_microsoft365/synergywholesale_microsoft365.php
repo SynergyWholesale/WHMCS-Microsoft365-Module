@@ -751,6 +751,11 @@ function synergywholesale_microsoft365_ChangePackage($params)
     return Messages::SUCCESS;
 }
 
+/**
+ * Output data and customize FE for client area
+ * @param $params
+ * @return array|string
+ */
 function synergywholesale_microsoft365_ClientArea($params)
 {
     if (empty($params['configoption1']) || empty($params['configoption2'])) {
@@ -806,6 +811,190 @@ function synergywholesale_microsoft365_ClientArea($params)
                 ],
             ]
         ],
+    ];
+}
+
+/**
+ * Synchronize data from Synergy Wholesale into WHMCS
+ * @param $params
+ * @return string
+ */
+function synergywholesale_microsoft365_sync($params)
+{
+    if (empty($params['configoption1']) || empty($params['configoption2'])) {
+        return Messages::FAILED_MISSING_MODULE_CONFIGS;
+    }
+
+    // New instance of local WHMCS database and Synergy API
+    $whmcsLocalDb = new LocalDB();
+    $synergyAPI = new SynergyAPI($params['configoption1'], $params['configoption2']);
+
+    // Retrieve list of custom fields of this service
+    $customFields = $whmcsLocalDb->getProductAndServiceCustomFields($params['pid'], $params['serviceid']);
+
+    // Get service's current Remote Tenant ID, check if it's empty
+    $remoteTenantId = $customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_TENANT_ID]['value'] ?? '';
+    if (empty($remoteTenantId)) {
+        $formatted = "This service #{$params['serviceid']} does not have a remote tenant configured";
+        // Logs for error
+        logModuleCall(ModuleEnums::MODULE_NAME, 'Synchronize', [
+            'productId' => $params['pid'],
+            'serviceId' => $params['serviceid'],
+        ], Messages::FAILED_SYNCHRONIZE . $formatted);
+
+        return Messages::FAILED_SYNCHRONIZE . "Error: {$formatted}";
+    }
+
+    /** Check if this is a valid tenant */
+    // First we want to get client details from Synergy Wholesale to make sure this is a valid tenant
+    $tenantDetails = $synergyAPI->getTenantDetails($remoteTenantId);
+    //Convert To Array
+    $tenantDetails = json_decode(json_encode($tenantDetails), true);
+    // If the API call was not successful, we return error
+    if (!empty($tenantDetails['error']) || empty($tenantDetails)) {
+        $formatted = synergywholesale_microsoft365_formatStatusAndMessage($tenantDetails);
+        // Logs for error
+        logModuleCall(ModuleEnums::MODULE_NAME, 'Synchronize', [
+            'productId' => $params['pid'],
+            'serviceId' => $params['serviceid'],
+        ], Messages::FAILED_SYNCHRONIZE . $formatted);
+
+        return Messages::FAILED_SYNCHRONIZE . "Error: $formatted";
+    }
+
+    /** Retrieve the list of remote subscriptions */
+    // Get the subscriptions list from Synergy Wholesale
+    $remoteSubscriptionsResponse = $synergyAPI->getSubscriptionsList($remoteTenantId);
+    // Convert To Array
+    $remoteSubscriptionsResponse = json_decode(json_encode($remoteSubscriptionsResponse), true);
+
+    // If the API call was not successful BUT NOT because of empty subscription, we return error
+    if (!empty($remoteSubscriptionsResponse['error']) && $remoteSubscriptionsResponse['status'] != 'ERR_NO_SUBSCRIPTIONS_FOUND' || empty($remoteSubscriptionsResponse)) {
+        $formatted = synergywholesale_microsoft365_formatStatusAndMessage($remoteSubscriptionsResponse);
+        // Logs for error
+        logModuleCall(ModuleEnums::MODULE_NAME, 'Synchronize', [
+            'productId' => $params['pid'],
+            'serviceId' => $params['serviceid'],
+        ], ['error' => $formatted], Messages::FAILED_SYNCHRONIZE . $formatted);
+
+        return Messages::FAILED_SYNCHRONIZE . "Error: $formatted";
+    }
+
+    $success = [];
+    /** Now we have got the list of remote subscriptions from Synergy Wholesale, we can start modifying the data */
+    // Get the list of remote subscriptions from API response
+    $remoteSubscriptionsList = $remoteSubscriptionsResponse['subscriptionList'] ?? [];
+
+    // Get the field ID and the current value of the Remote Subscriptions custom field
+    $remoteSubscriptionsFieldId = $customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_SUBSCRIPTIONS]['fieldId'] ?? '';
+    $previousRemoteSubscriptionsFieldValue = $customFields[ProductEnums::CUSTOM_FIELD_NAME_REMOTE_SUBSCRIPTIONS]['value'] ?? '';
+
+    // Get the field ID and the current value of the Domain Prefix custom field
+    $domainPrefixFieldId = $customFields[ProductEnums::CUSTOM_FIELD_NAME_DOMAIN_PREFIX]['fieldId'] ?? '';
+    $previousDomainPrefixFieldValue = $customFields[ProductEnums::CUSTOM_FIELD_NAME_DOMAIN_PREFIX]['value'] ?? '';
+
+    // First we update service status if it is different with the remote status
+    if ($params['status'] != $tenantDetails['clientStatus']) {
+        $whmcsLocalDb->updateServiceStatus($params['serviceid'], $tenantDetails['clientStatus']);
+        // Add log for service status if it has changed
+        $success[] = "Service status was set from ({$params['status']}) to ({$tenantDetails['clientStatus']})";
+    }
+
+    // Also update the domain prefix if they are different
+    if ($previousDomainPrefixFieldValue != $tenantDetails['domainPrefix']) {
+        $whmcsLocalDb->updateCustomFieldValues($domainPrefixFieldId, $params['serviceid'], $tenantDetails['domainPrefix']);
+        // Add log for service status if it has changed
+        $success[] = "Service's Domain Prefix custom field was set from ({$previousDomainPrefixFieldValue}) to ({$tenantDetails['domainPrefix']})";
+    }
+
+    // If remote subscriptions list is empty, that means this service hasn't purchased any subscriptions yet, or they have been deleted somehow.
+    // We will remove any values currently stored in WHMCS service's remote subscriptions custom field
+    if (empty($remoteSubscriptionsList)) {
+        // Update the value to empty in local database if it's not empty
+        if (!empty($previousRemoteSubscriptionsFieldValue)) {
+            $whmcsLocalDb->updateCustomFieldValues($remoteSubscriptionsFieldId, $params['serviceid'], '');
+            $success[] = "Remote Subscriptions field was set from ({$previousRemoteSubscriptionsFieldValue}) to empty";
+        }
+
+        // Add log message
+        $logMessage = empty($success) ? Messages::OK_SYNCHRONIZE . Messages::NO_CHANGES : Messages::OK_SYNCHRONIZE . implode(' --- ', $success);
+
+        // Logs for successful actions
+        logModuleCall(ModuleEnums::MODULE_NAME, 'Synchronize', [
+            'productId' => $params['pid'],
+            'serviceId' => $params['serviceid'],
+        ], $logMessage);
+
+        // Exit here, no need to go down further
+        return Messages::SUCCESS;
+    }
+
+    // Get the current config options of this service and format it
+    $localSubscriptionsWithQuantity = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'sync');
+
+    $updatedSubscriptions = [];
+    // If there are some remote subscriptions found from Synergy, we loop through and perform action accordingly
+    foreach ($remoteSubscriptionsList as $remoteSubscription) {
+        // Get the hosting config option details from database
+        $hostingConfigOptionId = $localSubscriptionsWithQuantity[$remoteSubscription['productId']]['hostingConfigOptionId'];
+        $hostingConfigOptionQuantity = $localSubscriptionsWithQuantity[$remoteSubscription['productId']]['quantity'];
+        $hostingConfigOptionProductName = $localSubscriptionsWithQuantity[$remoteSubscription['productId']]['productName'];
+
+        // If remote subscription is Cancelled or Terminated, we set quantity of local subscription to 0
+        if (in_array($remoteSubscription['subscriptionStatus'], Status::TERMINATED_STATUS)) {
+            if ($hostingConfigOptionQuantity != 0) {
+                // Update quantity to 0 for this service's config option
+                $whmcsLocalDb->updateHostingConfigOptionQuantity($hostingConfigOptionId);
+                $success[] = "Change quantity for [{$hostingConfigOptionProductName}] from {$hostingConfigOptionQuantity} to 0";
+            }
+
+            // Add this subscription value to an array holder, so we can update them all into the Remote Subscriptions custom field
+            // Values are saved into WHMCS database as "productId|subscriptionId"
+            $updatedSubscriptions[] = "{$remoteSubscription['productId']}|{$remoteSubscription['subscriptionId']}";
+            continue;
+        }
+
+        // Otherwise, if it's not in Terminated statuses, we set quantity to match with Synergy Wholesale
+        if ($hostingConfigOptionQuantity != $remoteSubscription['quantity']) {
+            // Update quantity to Synergy Wholesale record for this service's config option
+            $whmcsLocalDb->updateHostingConfigOptionQuantity($hostingConfigOptionId, $remoteSubscription['quantity']);
+            $success[] = "Change quantity for [{$hostingConfigOptionProductName}] from {$hostingConfigOptionQuantity} to {$remoteSubscription['quantity']}";
+        }
+
+        // Add this subscription value to an array holder, so we can update them all into the Remote Subscriptions custom field
+        // Values are saved into WHMCS database as "productId|subscriptionId"
+        $updatedSubscriptions[] = "{$remoteSubscription['productId']}|{$remoteSubscription['subscriptionId']}";
+    }
+
+    // After the loop, we update the new subscriptions into the custom field
+    $newValue = implode(', ', $updatedSubscriptions);
+    $whmcsLocalDb->updateCustomFieldValues($remoteSubscriptionsFieldId, $params['serviceid'], $newValue);
+
+    // Add log for custom field if the value has changed
+    if ($newValue != $previousRemoteSubscriptionsFieldValue) {
+        $success[] = "Remote Subscriptions field was set from ({$previousRemoteSubscriptionsFieldValue}) to ({$newValue})";
+    }
+
+    // Add log message
+    $logMessage = empty($success) ? Messages::OK_SYNCHRONIZE . Messages::NO_CHANGES : Messages::OK_SYNCHRONIZE . implode(' --- ', $success);
+
+    // Add log for successful actions
+    logModuleCall(ModuleEnums::MODULE_NAME, 'Synchronize', [
+        'productId' => $params['pid'],
+        'serviceId' => $params['serviceid'],
+    ], $logMessage);
+
+    // Finally we return the success message for module command
+    return Messages::SUCCESS;
+}
+
+/**
+ * Custom module commands declaration
+ * @return string[]
+ */
+function synergywholesale_microsoft365_AdminCustomButtonArray() {
+    return [
+        'Synchronize' => 'sync',
     ];
 }
 

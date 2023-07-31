@@ -74,6 +74,21 @@ class WhmcsLocalDb
                     }
                 }
                 break;
+            case 'sync':
+                foreach ($configOptions as $row) {
+                    if (strpos($row->optionname, '|') && $row->qty >= 0) {
+                        $productId = explode('|', $row->optionname)[0];
+
+                        // For compare action, we would want to take all config options even if quantity is 0
+                        $return[$productId] = [
+                            'hostingConfigOptionId' => $row->id,
+                            'productId' => $productId,
+                            'productName' => $row->optionname,
+                            'quantity' => $row->qty,
+                        ];
+                    }
+                }
+                break;
             case 'create':
             default:
                 foreach ($configOptions as $row) {
@@ -184,6 +199,17 @@ class WhmcsLocalDb
         return $return;
     }
 
+    /** Update quantity for a hosting config option */
+    public function updateHostingConfigOptionQuantity($hostingConfigOptionId, int $quantity = 0)
+    {
+        return DB::table('tblhostingconfigoptions')
+            ->where('id', $hostingConfigOptionId)
+            ->update([
+                'qty' => $quantity,
+            ]);
+    }
+
+    /** Update new valid password for service */
     public function updateServiceValidPassword($serviceId, $newPassword)
     {
         return DB::table('tblhosting')
