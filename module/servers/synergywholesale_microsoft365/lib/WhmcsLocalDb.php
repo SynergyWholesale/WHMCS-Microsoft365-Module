@@ -74,6 +74,21 @@ class WhmcsLocalDb
                     }
                 }
                 break;
+            case 'sync':
+                foreach ($configOptions as $row) {
+                    if (strpos($row->optionname, '|') && $row->qty >= 0) {
+                        $productId = explode('|', $row->optionname)[0];
+
+                        // For compare action, we would want to take all config options even if quantity is 0
+                        $return[$productId] = [
+                            'hostingConfigOptionId' => $row->id,
+                            'productId' => $productId,
+                            'productName' => $row->optionname,
+                            'quantity' => $row->qty,
+                        ];
+                    }
+                }
+                break;
             case 'create':
             default:
                 foreach ($configOptions as $row) {
@@ -184,15 +199,17 @@ class WhmcsLocalDb
         return $return;
     }
 
-    public function getServicesFromOrder($orderId)
+    /** Update quantity for a hosting config option */
+    public function updateHostingConfigOptionQuantity($hostingConfigOptionId, int $quantity = 0)
     {
-        return DB::table('tblhosting')
-            ->join('tblorders', 'tblorders.id', '=', 'tblhosting.orderid')
-            ->select(['tblhosting.*'])
-            ->where('tblhosting.orderid', '=', $orderId)
-            ->get();
+        return DB::table('tblhostingconfigoptions')
+            ->where('id', $hostingConfigOptionId)
+            ->update([
+                'qty' => $quantity,
+            ]);
     }
 
+    /** Update new valid password for service */
     public function updateServiceValidPassword($serviceId, $newPassword)
     {
         return DB::table('tblhosting')
@@ -233,5 +250,76 @@ class WhmcsLocalDb
         }
 
         return $finalPassword;
+    }
+
+    /** Create new config option group */
+    public function createConfigOptionGroup($data)
+    {
+        return DB::table(ModuleEnums::WHMCS_CONFIG_GROUPS_TABLE)
+            ->insert($data);
+    }
+
+    /** Check if a config option group with same name existed */
+    public function getConfigOptionGroupByName($name)
+    {
+        return DB::table(ModuleEnums::WHMCS_CONFIG_GROUPS_TABLE)
+            ->where('name', "{$name}")
+            ->first();
+    }
+
+    /** Create new config option that belongs to a config group */
+    public function createConfigOption($data)
+    {
+        return DB::table(ModuleEnums::WHMCS_CONFIG_OPTIONS_TABLE)
+            ->insert($data);
+    }
+
+    /** Assign a config option to a product group */
+    public function assignConfigGroupToProduct($data)
+    {
+        $alreadyAssigned = DB::table(ModuleEnums::WHMCS_PRODUCT_CONFIG_LINKS_TABLE)
+            ->where('gid', $data['gid'])
+            ->where('pid', $data['pid'])
+            ->first();
+
+        return empty($alreadyAssigned)
+            ? DB::table(ModuleEnums::WHMCS_PRODUCT_CONFIG_LINKS_TABLE)
+                ->insert($data)
+            : false;
+    }
+
+    /** Disable option 'create config option' of a product */
+    public function disableProductCreateConfigOptions($productId)
+    {
+        return DB::table(ModuleEnums::WHMCS_PRODUCT_TABLE)
+            ->where('id', $productId)
+            ->update([
+                'configoption3' => ''
+            ]);
+    }
+
+    /** Get all custom fields of a product */
+    public function getProductCustomFields($productId)
+    {
+        return DB::table(ModuleEnums::WHMCS_CUSTOM_FIELDS_TABLE)
+            ->where('relid', $productId)
+            ->get();
+    }
+
+    /** Create new custom fields for product */
+    public function createNewProductCustomField($data)
+    {
+        return DB::table(ModuleEnums::WHMCS_CUSTOM_FIELDS_TABLE)
+            ->insert($data);
+    }
+
+    /** Disable option 'create custom fields' of a product */
+    public function disableProductCreateCustomFields($productId)
+    {
+        return DB::table(ModuleEnums::WHMCS_PRODUCT_TABLE)
+            ->where('id', $productId)
+            ->update([
+                'configoption4' => ''
+            ]);
     }
 }

@@ -42,7 +42,7 @@ class SynergyAPI
      * @param $data (body request of the API call)
      * @return array|mixed|string
      */
-    private function sendRequest($action, $data)
+    private function sendRequest($action, array $data = [])
     {
         $request = array_merge($data, $this->auth);
 
@@ -115,5 +115,22 @@ class SynergyAPI
     public function updateSubscriptionQuantity($data)
     {
         return $this->sendRequest('subscriptionUpdateQuantity', $data);
+    }
+
+    /** Get all subscriptions of a tenant */
+    public function getSubscriptionsList(int $id)
+    {
+        if (empty($id)) {
+            return [
+                'error' => 'Cannot query with empty input value.',
+            ];
+        }
+
+        return $this->sendRequest('subscriptionListClientSubscriptions', ['identifier' => $id]);
+    }
+
+    public function getProductsList()
+    {
+        return $this->sendRequest('subscriptionListPurchasable');
     }
 }
