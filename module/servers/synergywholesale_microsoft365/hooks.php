@@ -4,6 +4,7 @@ use WHMCS\Module\Server\SynergywholesaleMicrosoft365\SynergyAPI;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\WhmcsLocalDb as LocalDB;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\Messages;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ProductEnums;
+use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ModuleEnums;
 
 if (!defined('WHMCS'))
     die('You cannot access this file directly.');
@@ -16,6 +17,11 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
     // Get the current product ID
     $productId = $vars['pid'];
     $product = $whmcsLocalDb->getProductById($productId);
+
+    // Validate and only allow this hook continue to be run if this product is assigned to MS365 module
+    if ($product->servertype != ModuleEnums::MODULE_NAME) {
+        return 0;
+    }
 
     // Get its module's config option values
     $configData = [
