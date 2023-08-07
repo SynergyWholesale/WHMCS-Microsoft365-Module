@@ -94,9 +94,9 @@ class ProductEnums
 
     /** Define the package options to display for the dropdown in Product Config */
     const MS365_PACKAGES = [
-        self:: CONFIG_GROUP_BASIC_NAME => "Microsoft 365 Business Basic",
-        self::CONFIG_GROUP_STANDARD_NAME => "Microsoft 365 Business Standard",
-        self::CONFIG_GROUP_PREMIUM_NAME => "Microsoft 365 Business Premium",
+        self:: CONFIG_GROUP_BASIC_NAME => 'Microsoft 365 Business Basic',
+        self::CONFIG_GROUP_STANDARD_NAME => 'Microsoft 365 Business Standard',
+        self::CONFIG_GROUP_PREMIUM_NAME => 'Microsoft 365 Business Premium',
     ];
 
     /** CONSTANTS FOR CUSTOM FIELD NAMES */

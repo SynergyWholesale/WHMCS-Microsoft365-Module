@@ -199,7 +199,7 @@ function hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups(L
         $success[] = "Create new config option group [{$configGroup['name']}]";
 
         // Get the product we just created so we can add config options to this group
-        $newGroup = $whmcsLocalDb->getConfigOptionGroupByName($configGroup['name'], 'get');
+        $newGroup = $whmcsLocalDb->getConfigOptionGroupByName($configGroup['name']);
         // Add this new group to the After Created list
         $allConfigGroupsFinal[$newGroup->name] = collect($newGroup)->toArray();
 

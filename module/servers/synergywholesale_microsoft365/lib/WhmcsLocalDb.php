@@ -229,9 +229,9 @@ class WhmcsLocalDb
     public function generateValidPassword(): string
     {
         // Sketch out the characters that we can pick
-        $alphabet = "abcdefghijklmnopqrstuvwxyz";
-        $numeric = "0123456789";
-        $special = "{}[]()!@$^*_+=~";
+        $alphabet = 'abcdefghijklmnopqrstuvwxyz';
+        $numeric = '0123456789';
+        $special = '{}[]()!@$^*_+=~';
 
         $finalPassword = "";
 
