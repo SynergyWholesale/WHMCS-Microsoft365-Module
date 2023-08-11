@@ -40,6 +40,21 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
 
         return 0;
     }
+    /** Disable the checkboxes before doing anything else because whether the actions are successful or not, we always disable them */
+    if ($createConfigOptions) { // If this config options checkbox is checked, we disable it
+        if (!$whmcsLocalDb->disableProductCreateConfigOptions($product->id)) {
+            $error[] = "Disable product's Create Config Options value";
+        } else {
+            $success[] = "Disable product's Create Config Options value";
+        }
+    }
+    if ($createCustomFields) { // If this custom field checkbox is checked, we disable it
+        if (!$whmcsLocalDb->disableProductCreateCustomFields($product->id)) {
+            $error[] = "Disable product's Create Custom Fields value";
+        } else {
+            $success[] = "Disable product's Create Custom Fields value";
+        }
+    }
     /** At this part, it means user wants to create new fields, we check if Synergy API credentials have been saved */
     // If user hasn't saved Synergy Reseller ID and API Key, then we error out
     if (empty($product->configoption1) || empty($product->configoption2)) {
@@ -77,13 +92,6 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
                 $error[] = $assignResult['message'];
             }
         }
-
-        /** Last thing for config option is we want to disable the 'create config option' of this product, so next time user saves this product, we don't repeat these steps */
-        if (!$whmcsLocalDb->disableProductCreateConfigOptions($product->id)) {
-            $error[] = "Disable product's Create Config Options value";
-        } else {
-            $success[] = "Disable product's Create Config Options value";
-        }
     }
 
     /** ADD CUSTOM FIELDS FOR PRODUCT */
@@ -94,13 +102,6 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
         // Sync the new error and success messages with the current messages list
         $success = array_merge($success, $validateAndCreateCustomFieldsResult['success']);
         $error = array_merge($error, $validateAndCreateCustomFieldsResult['error']);
-
-        /** Last thing for custom fields is we want to disable the 'create custom fields' of this product, so next time user saves this product, we don't repeat these steps */
-        if (!$whmcsLocalDb->disableProductCreateCustomFields($product->id)) {
-            $error[] = "Disable product's Create Custom Fields value";
-        } else {
-            $success[] = "Disable product's Create Custom Fields value";
-        }
     }
 
     /** FINALLY AT THE END WE LOG ANY SUCCESS OR ERRORS DURING THE PROCESS */
