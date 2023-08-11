@@ -105,11 +105,6 @@ class ProductEnums
         'triennially' => self::DEFAULT_PRICING_ZERO,
     ];
 
-    /** Define the package options to display for the dropdown in Product Config */
-    const MS365_PACKAGES = [
-        self:: CONFIG_GROUP_MICROSOFT_365_NAME => 'Microsoft 365 Business Products',
-    ];
-
     /** CONSTANTS FOR CUSTOM FIELD NAMES */
     const CUSTOM_FIELD_NAME_CUSTOMER_AGREEMENT = 'Customer Agreement';
     const CUSTOM_FIELD_NAME_REMOTE_TENANT_ID = 'Remote Tenant ID';

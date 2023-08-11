@@ -32,12 +32,6 @@ function synergywholesale_microsoft365_ConfigOptions()
             'Type' => 'yesno',
             'Description' => 'Start creating default custom fields for Microsoft 365 products'
         ],
-        'configGroupAssign' => [
-            'FriendlyName' => 'Configuration Group Assign',
-            'Type' => 'dropdown',
-            'Options' => ProductEnums::MS365_PACKAGES,
-            'Default' => ProductEnums::CONFIG_GROUP_MICROSOFT_365_NAME,
-        ],
     ];
 }
 

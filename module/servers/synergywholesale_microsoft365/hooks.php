@@ -27,7 +27,7 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
     $configData = [
         'createConfigOptions' => $product->configoption3,
         'createCustomFields' => $product->configoption4,
-        'configOptionPackage' => $product->configoption5,
+        'configOptionPackage' => ProductEnums::CONFIG_GROUP_MICROSOFT_365_NAME,
     ];
 
     /** CHECK IF ANY CHECKBOX IS CHECKED */
