@@ -219,16 +219,12 @@ function hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups(L
                 continue;
             }
 
-            /** After creating the config option, we want to add the sub option Seats */
+            /** After creating the config option, we want to add the sub option 'Seats' */
             // Get id of the config option we just created, it will always true because we just created it before
             $newOption = $whmcsLocalDb->getConfigOptionByGroupIdAndOptionName($newGroup->id, $configOption['optionname']);
             // Prepare data for new config option sub
-            $newConfigOptionSub = [
-                'configid' => $newOption->id,
-                'optionname' => ProductEnums::CONFIG_OPTION_SUB_NAME_SEAT,
-                'sortorder' => ProductEnums::DEFAULT_ORDER,
-                'hidden' => ProductEnums::DEFAULT_HIDDEN,
-            ];
+            $newConfigOptionSub = ProductEnums::DEFAULT_CONFIG_OPTION_SUB_DETAILS;
+            $newConfigOptionSub['configid'] = $newOption->id;
             // Perform action, check success status and add message
             if (!$whmcsLocalDb->createConfigOptionSub($newConfigOptionSub)) {
                 // If failed, we add error message
@@ -240,6 +236,28 @@ function hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups(L
             $success[] = "Create new sub option [{$newConfigOptionSub['optionname']}] for config option ({$configOption['optionname']})";
 
             /** After creating the sub option 'Seats', we want to configure the price for it as 0.00 as well */
+            // Get id of the config option we just created, it will always true because we just created it before
+            $newOptionSubObject = $whmcsLocalDb->getConfigOptionSubByConfigIdAndSubOptionName($newOption->id, $newConfigOptionSub['optionname']);
+            // Prepare data for new config option sub pricing
+            $newConfigOptionSubPricing = ProductEnums::DEFAULT_CONFIG_OPTION_SUB_PRICING_DETAILS; // Get all default details
+            $newConfigOptionSubPricing['relid'] = $newOptionSubObject->id; // Assign the targeted config option sub id
+            // Get currency 'AUD' instead of defaulting it as 1 as some partners might have other currencies along with 'AUD'
+            $currency = $whmcsLocalDb->getCurrencyByCode(ProductEnums::DEFAULT_CURRENCY);
+            if (!$currency) {
+                // If we can't find currency AUD somehow, then we display error mentioning that user should create the AUD currency first as we cannot create it for them, it might cause conflict in convert rate and stuffs
+                $error[] = "Create default pricing for new config option sub [{$newConfigOptionSub['optionname']}] in config option ({$configOption['optionname']}): (" . Messages::CURRENCY_AUD_MISSING . ")";
+                continue;
+            }
+            $newConfigOptionSubPricing['currency'] = $currency->id; // If currency AUD was found, then we assign it to the new pricing
+            // Perform action, check success status and add message
+            if (!$whmcsLocalDb->createConfigOptionSubPricing($newConfigOptionSubPricing)) {
+                // If failed, we add error message
+                $error[] = "Create default pricing for new sub option [{$newConfigOptionSub['optionname']}] in config option ({$configOption['optionname']}): (" . Messages::UNKNOWN_ERROR . ")";
+                continue;
+            }
+
+            // If success, then add success message
+            $success[] = "Create default pricing for new sub option [{$newConfigOptionSub['optionname']}] in config option ({$configOption['optionname']})";
         }
     }
 

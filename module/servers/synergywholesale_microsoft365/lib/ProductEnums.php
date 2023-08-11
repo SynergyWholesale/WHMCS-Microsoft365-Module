@@ -82,6 +82,28 @@ class ProductEnums
     /** Define the config option sub and its default pricing */
     const CONFIG_OPTION_SUB_NAME_SEAT = 'Seats';
     const DEFAULT_PRICING_ZERO = 0.00;
+    const DEFAULT_PRICING_TYPE = 'configoptions';
+    const DEFAULT_CURRENCY = 'AUD';
+    const DEFAULT_CONFIG_OPTION_SUB_DETAILS = [
+        'optionname' => self::CONFIG_OPTION_SUB_NAME_SEAT,
+        'sortorder' => self::DEFAULT_ORDER,
+        'hidden' => self::DEFAULT_HIDDEN,
+    ];
+    const DEFAULT_CONFIG_OPTION_SUB_PRICING_DETAILS = [
+        'type' => self::DEFAULT_PRICING_TYPE,
+        'msetupfee' => self::DEFAULT_PRICING_ZERO,
+        'qsetupfee' => self::DEFAULT_PRICING_ZERO,
+        'ssetupfee' => self::DEFAULT_PRICING_ZERO,
+        'asetupfee' => self::DEFAULT_PRICING_ZERO,
+        'bsetupfee' => self::DEFAULT_PRICING_ZERO,
+        'tsetupfee' => self::DEFAULT_PRICING_ZERO,
+        'monthly' => self::DEFAULT_PRICING_ZERO,
+        'quarterly' => self::DEFAULT_PRICING_ZERO,
+        'semiannually' => self::DEFAULT_PRICING_ZERO,
+        'annually' => self::DEFAULT_PRICING_ZERO,
+        'biennially' => self::DEFAULT_PRICING_ZERO,
+        'triennially' => self::DEFAULT_PRICING_ZERO,
+    ];
 
     /** Define the package options to display for the dropdown in Product Config */
     const MS365_PACKAGES = [

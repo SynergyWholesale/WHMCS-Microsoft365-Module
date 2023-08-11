@@ -323,6 +323,16 @@ class WhmcsLocalDb
             ]);
     }
 
+    /** Get product config option by config id and name */
+    public function getConfigOptionByGroupIdAndOptionName($groupId, $optionName)
+    {
+        return DB::table(ModuleEnums::WHMCS_CONFIG_OPTIONS_TABLE)
+            ->where('gid', $groupId)
+            ->where('optionname', "{$optionName}")
+            ->orderBy('id', 'desc') // We want to get the latest record that we just created, so we will not run into issue where user might have manually added a duplicate config name in this group
+            ->first();
+    }
+
     /** Create config option subs for a config option */
     public function createConfigOptionSub($data)
     {
@@ -330,13 +340,28 @@ class WhmcsLocalDb
             ->insert($data);
     }
 
-    /** Get product config option by config id and name */
-    public function getConfigOptionByGroupIdAndOptionName($groupId, $optionName)
+    /** Get config option sub by config id and sub option name */
+    public function getConfigOptionSubByConfigIdAndSubOptionName($configId, $subOptionName)
     {
-        return DB::table(ModuleEnums::WHMCS_CONFIG_OPTIONS_TABLE)
-            ->where('gid', $groupId)
-            ->where('name', "{$optionName}")
-            ->orderBy('id', 'desc') // We want to get the latest record that we just created, so we will not run into issue where user might have manually added a duplicate config name in this group
+        return DB::table(ModuleEnums::WHMCS_PRODUCT_CONFIG_OPTIONS_SUB_TABLE)
+            ->where('configid', $configId)
+            ->where('optionname', "{$subOptionName}")
+            ->orderBy('id', 'desc') // We want to get the latest record that we just created, so we will not run into issue where user might have manually added a duplicate sub config option name in this config option
             ->first();
+    }
+
+    /** Get currency by name */
+    public function getCurrencyByCode($code)
+    {
+        return DB::table(ModuleEnums::WHMCS_CURRENCY_TABLE)
+            ->where('code', "{$code}")
+            ->first();
+    }
+
+    /** Create config option subs for a config option */
+    public function createConfigOptionSubPricing($data)
+    {
+        return DB::table(ModuleEnums::WHMCS_PRICING_TABLE)
+            ->insert($data);
     }
 }
