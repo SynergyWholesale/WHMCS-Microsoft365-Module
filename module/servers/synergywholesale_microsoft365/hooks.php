@@ -19,7 +19,7 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
     $product = $whmcsLocalDb->getProductById($productId);
 
     // Validate and only allow this hook continue to be run if this product is assigned to MS365 module
-    if ($product->servertype != ModuleEnums::MODULE_NAME) {
+    if ($product->servertype != 'synergywholesale_microsoft365') {
         return 0;
     }
 
@@ -218,6 +218,9 @@ function hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups(L
                 $error[] = "Create new config option for group ({$configGroup['name']}): [{$configOption['optionname']}] (" . Messages::UNKNOWN_ERROR . ")";
                 continue;
             }
+
+            // After creating the config option, we want to add the option Seats and its pricing
+
 
             // If success, then add success message
             $success[] = "Create new config option [{$configOption['optionname']}] for group ({$configGroup['name']})";

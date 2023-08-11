@@ -7,12 +7,8 @@ class ProductEnums
     /**
      * NOTE: THESE CONSTANTS CAN BE UPDATED PRIOR TO DEPLOYMENT
      */
-    const CONFIG_GROUP_BASIC_NAME = 'Synergy Wholesale Microsoft 365 Business Basic';
-    const CONFIG_GROUP_BASIC_DESCRIPTION = 'Synergy Wholesale Microsoft 365 Business Basic';
-    const CONFIG_GROUP_STANDARD_NAME = 'Synergy Wholesale Microsoft 365 Business Standard';
-    const CONFIG_GROUP_STANDARD_DESCRIPTION = 'Synergy Wholesale Microsoft 365 Business Standard';
-    const CONFIG_GROUP_PREMIUM_NAME = 'Synergy Wholesale Microsoft 365 Business Premium';
-    const CONFIG_GROUP_PREMIUM_DESCRIPTION = 'Synergy Wholesale Microsoft 365 Business Premium';
+    const CONFIG_GROUP_MICROSOFT_365_NAME = 'Synergy Wholesale Microsoft 365 Business';
+    const CONFIG_GROUP_MICROSOFT_365_DESCRIPTION = 'Synergy Wholesale Microsoft 365 Business Products';
 
     /** FOR THESE CONFIG OPTION NAMES, LATER WE WILL ADD SYNERGY PRODUCT'S ID TO PREFIX */
     const CONFIG_OPTION_BASIC_NAME = 'Microsoft 365 Business Basic';
@@ -31,7 +27,7 @@ class ProductEnums
     /** CONSTANTS FOR ALL GROUPS AND ALL OPTIONS */
     const ALL_CONFIG_OPTIONS = [
         [
-            'group' => self::CONFIG_GROUP_BASIC_NAME,
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
             'optionname' => self::CONFIG_OPTION_BASIC_NAME,
             'optiontype' => self::OPTION_TYPE_QUANTITY,
             'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
@@ -40,7 +36,7 @@ class ProductEnums
             'hidden' => self::DEFAULT_HIDDEN,
         ],
         [
-            'group' => self::CONFIG_GROUP_STANDARD_NAME,
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
             'optionname' => self::CONFIG_OPTION_STANDARD_NAME,
             'optiontype' => self::OPTION_TYPE_QUANTITY,
             'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
@@ -49,7 +45,7 @@ class ProductEnums
             'hidden' => self::DEFAULT_HIDDEN,
         ],
         [
-            'group' => self::CONFIG_GROUP_PREMIUM_NAME,
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
             'optionname' => self::CONFIG_OPTION_PREMIUM_NAME,
             'optiontype' => self::OPTION_TYPE_QUANTITY,
             'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
@@ -58,7 +54,7 @@ class ProductEnums
             'hidden' => self::DEFAULT_HIDDEN,
         ],
         [
-            'group' => self::CONFIG_GROUP_STANDARD_NAME,
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
             'optionname' => self::CONFIG_OPTION_EXCHANGE_ONE,
             'optiontype' => self::OPTION_TYPE_QUANTITY,
             'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
@@ -67,7 +63,7 @@ class ProductEnums
             'hidden' => self::DEFAULT_HIDDEN,
         ],
         [
-            'group' => self::CONFIG_GROUP_STANDARD_NAME,
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
             'optionname' => self::CONFIG_OPTION_EXCHANGE_TWO,
             'optiontype' => self::OPTION_TYPE_QUANTITY,
             'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
@@ -79,24 +75,14 @@ class ProductEnums
 
     const ALL_CONFIG_GROUPS = [
         [
-            'name' => self::CONFIG_GROUP_BASIC_NAME,
-            'description' => self::CONFIG_GROUP_BASIC_DESCRIPTION,
-        ],
-        [
-            'name' => self::CONFIG_GROUP_STANDARD_NAME,
-            'description' => self::CONFIG_GROUP_STANDARD_DESCRIPTION,
-        ],
-        [
-            'name' => self::CONFIG_GROUP_PREMIUM_NAME,
-            'description' => self::CONFIG_GROUP_PREMIUM_DESCRIPTION,
-        ],
+            'name' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'description' => self::CONFIG_GROUP_MICROSOFT_365_DESCRIPTION,
+        ]
     ];
 
     /** Define the package options to display for the dropdown in Product Config */
     const MS365_PACKAGES = [
-        self:: CONFIG_GROUP_BASIC_NAME => 'Microsoft 365 Business Basic',
-        self::CONFIG_GROUP_STANDARD_NAME => 'Microsoft 365 Business Standard',
-        self::CONFIG_GROUP_PREMIUM_NAME => 'Microsoft 365 Business Premium',
+        self:: CONFIG_GROUP_MICROSOFT_365_NAME => 'Microsoft 365 Business Products',
     ];
 
     /** CONSTANTS FOR CUSTOM FIELD NAMES */

@@ -36,7 +36,7 @@ function synergywholesale_microsoft365_ConfigOptions()
             'FriendlyName' => 'Configuration Group Assign',
             'Type' => 'dropdown',
             'Options' => ProductEnums::MS365_PACKAGES,
-            'Default' => ProductEnums::CONFIG_GROUP_BASIC_NAME,
+            'Default' => ProductEnums::CONFIG_GROUP_MICROSOFT_365_NAME,
         ],
     ];
 }
