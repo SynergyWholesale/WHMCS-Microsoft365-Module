@@ -4,7 +4,6 @@ use WHMCS\Module\Server\SynergywholesaleMicrosoft365\SynergyAPI;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\WhmcsLocalDb as LocalDB;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\Messages;
 use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ProductEnums;
-use WHMCS\Module\Server\SynergywholesaleMicrosoft365\ModuleEnums;
 
 if (!defined('WHMCS'))
     die('You cannot access this file directly.');

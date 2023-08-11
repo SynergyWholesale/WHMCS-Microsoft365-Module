@@ -264,6 +264,7 @@ class WhmcsLocalDb
     {
         return DB::table(ModuleEnums::WHMCS_CONFIG_GROUPS_TABLE)
             ->where('name', "{$name}")
+            ->orderBy('id', 'desc') // We want to get the latest record that we just created, so we will not run into issue where user might have manually added a duplicate config group
             ->first();
     }
 
