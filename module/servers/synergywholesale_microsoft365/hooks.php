@@ -219,11 +219,27 @@ function hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups(L
                 continue;
             }
 
-            // After creating the config option, we want to add the option Seats and its pricing
-
+            /** After creating the config option, we want to add the sub option Seats */
+            // Get id of the config option we just created, it will always true because we just created it before
+            $newOption = $whmcsLocalDb->getConfigOptionByGroupIdAndOptionName($newGroup->id, $configOption['optionname']);
+            // Prepare data for new config option sub
+            $newConfigOptionSub = [
+                'configid' => $newOption->id,
+                'optionname' => ProductEnums::CONFIG_OPTION_SUB_NAME_SEAT,
+                'sortorder' => ProductEnums::DEFAULT_ORDER,
+                'hidden' => ProductEnums::DEFAULT_HIDDEN,
+            ];
+            // Perform action, check success status and add message
+            if (!$whmcsLocalDb->createConfigOptionSub($newConfigOptionSub)) {
+                // If failed, we add error message
+                $error[] = "Create new sub option [{$newConfigOptionSub['optionname']}] for config option ({$configOption['optionname']}): (" . Messages::UNKNOWN_ERROR . ")";
+                continue;
+            }
 
             // If success, then add success message
-            $success[] = "Create new config option [{$configOption['optionname']}] for group ({$configGroup['name']})";
+            $success[] = "Create new sub option [{$newConfigOptionSub['optionname']}] for config option ({$configOption['optionname']})";
+
+            /** After creating the sub option 'Seats', we want to configure the price for it as 0.00 as well */
         }
     }
 

@@ -322,4 +322,21 @@ class WhmcsLocalDb
                 'configoption4' => ''
             ]);
     }
+
+    /** Create config option subs for a config option */
+    public function createConfigOptionSub($data)
+    {
+        return DB::table(ModuleEnums::WHMCS_PRODUCT_CONFIG_OPTIONS_SUB_TABLE)
+            ->insert($data);
+    }
+
+    /** Get product config option by config id and name */
+    public function getConfigOptionByGroupIdAndOptionName($groupId, $optionName)
+    {
+        return DB::table(ModuleEnums::WHMCS_CONFIG_OPTIONS_TABLE)
+            ->where('gid', $groupId)
+            ->where('name', "{$optionName}")
+            ->orderBy('id', 'desc') // We want to get the latest record that we just created, so we will not run into issue where user might have manually added a duplicate config name in this group
+            ->first();
+    }
 }

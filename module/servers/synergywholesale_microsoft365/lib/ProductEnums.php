@@ -79,6 +79,9 @@ class ProductEnums
             'description' => self::CONFIG_GROUP_MICROSOFT_365_DESCRIPTION,
         ]
     ];
+    /** Define the config option sub and its default pricing */
+    const CONFIG_OPTION_SUB_NAME_SEAT = 'Seats';
+    const DEFAULT_PRICING_ZERO = 0.00;
 
     /** Define the package options to display for the dropdown in Product Config */
     const MS365_PACKAGES = [
