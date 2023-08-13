@@ -158,8 +158,25 @@ function hookSynergywholesale_Microsoft365_validateAndCreateCustomFields(LocalDB
 /** Function inside hook for logics to check and create config option groups */
 function hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups(LocalDB $whmcsLocalDb, SynergyAPI $synergyAPI): array
 {
+    // Placeholder for all success and error messages
     $success = [];
     $error = [];
+    // Placeholder for all config option groups after being created
+    $allConfigGroupsFinal = [];
+
+    // Get currency 'AUD' instead of defaulting it as 1 as some partners might have other currencies along with 'AUD'
+    $currency = $whmcsLocalDb->getCurrencyByCode(ProductEnums::DEFAULT_CURRENCY);
+    if (!$currency) {
+        // If we can't find currency AUD somehow, then we display error mentioning that user should create the AUD currency first as we cannot create it for them, it might cause conflict in convert rate and stuffs
+        $error[] = "Get default currency for sub config option: (" . Messages::CURRENCY_AUD_MISSING . ")";
+
+        return [
+            'allConfigGroupsFinal' => $allConfigGroupsFinal,
+            'success' => $success,
+            'error' => $error,
+        ];
+    }
+
     // Get products list from Synergy API and format it so we can assign it to local DB config option name
     $productsListResponse = $synergyAPI->getProductsList();
     $productsList = $productsListResponse->subscriptionList[0];
@@ -174,9 +191,6 @@ function hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups(L
 
         return [$item['group'] => $item];
     })->toArray();
-
-    // Placeholder for all config option groups after being created
-    $allConfigGroupsFinal = [];
 
     foreach (ProductEnums::ALL_CONFIG_GROUPS as $configGroup) {
         /** First we create the config group */
@@ -241,14 +255,7 @@ function hookSynergywholesale_Microsoft365_validateAndCreateConfigOptionGroups(L
             // Prepare data for new config option sub pricing
             $newConfigOptionSubPricing = ProductEnums::DEFAULT_CONFIG_OPTION_SUB_PRICING_DETAILS; // Get all default details
             $newConfigOptionSubPricing['relid'] = $newOptionSubObject->id; // Assign the targeted config option sub id
-            // Get currency 'AUD' instead of defaulting it as 1 as some partners might have other currencies along with 'AUD'
-            $currency = $whmcsLocalDb->getCurrencyByCode(ProductEnums::DEFAULT_CURRENCY);
-            if (!$currency) {
-                // If we can't find currency AUD somehow, then we display error mentioning that user should create the AUD currency first as we cannot create it for them, it might cause conflict in convert rate and stuffs
-                $error[] = "Create default pricing for new config option sub [{$newConfigOptionSub['optionname']}] in config option ({$configOption['optionname']}): (" . Messages::CURRENCY_AUD_MISSING . ")";
-                continue;
-            }
-            $newConfigOptionSubPricing['currency'] = $currency->id; // If currency AUD was found, then we assign it to the new pricing
+            $newConfigOptionSubPricing['currency'] = $currency->id ?? ''; // If currency AUD was found from the initial check, then we assign it to the new pricing here
             // Perform action, check success status and add message
             if (!$whmcsLocalDb->createConfigOptionSubPricing($newConfigOptionSubPricing)) {
                 // If failed, we add error message
