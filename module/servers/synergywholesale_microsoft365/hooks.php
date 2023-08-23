@@ -39,6 +39,11 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
 
         return 0;
     }
+
+    // We want to log any success or error actions
+    $success = [];
+    $error = [];
+
     /** Disable the checkboxes before doing anything else because whether the actions are successful or not, we always disable them */
     if ($createConfigOptions) { // If this config options checkbox is checked, we disable it
         if (!$whmcsLocalDb->disableProductCreateConfigOptions($product->id)) {
@@ -64,10 +69,6 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
     // If the credentials were provided, we create new Synergy API instance
     $synergyAPI = new SynergyAPI($product->configoption1, $product->configoption2);
 
-    // We want to log any success or error actions
-    $success = [];
-    $error = [];
-
     /** ADD CONFIG GROUP AND CONFIG OPTIONS */
     // At this stage, we should add the config group and config options if this checkbox is checked
     if ($createConfigOptions) {
@@ -76,8 +77,8 @@ add_hook('AdminProductConfigFieldsSave', 1, function($vars) {
         // Sync the list of config groups that we just retrieved from the above function
         $allConfigGroupsFinal = $validateAndCreateConfigsResult['allConfigGroupsFinal'];
         // Sync the new error and success messages with the current messages list
-        $success = $validateAndCreateConfigsResult['success'];
-        $error = $validateAndCreateConfigsResult['error'];
+        $success = array_merge($success, $validateAndCreateConfigsResult['success']);
+        $error = array_merge($error, $validateAndCreateConfigsResult['error']);
 
         /** After creating all configurations, we check if user wants to assign this product to a config group */
         // We only assign this product to a config group if user provided the requested package and we have added some groups before
