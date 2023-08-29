@@ -10,6 +10,7 @@ class ServiceStatuses
     const STATUS_SUSPENDED = 'Suspended';
     const STATUS_STAFF_SUSPENDED = 'Suspended By Staff';
     const STATUS_PENDING = 'Pending';
+    const STATUS_TERMINATED = 'Terminated';
     const ACTIVE_STATUS = [
         self::STATUS_ACTIVE,
         self::STATUS_PENDING,
@@ -17,12 +18,11 @@ class ServiceStatuses
     const SUSPENDED_STATUS = [
         self::STATUS_SUSPENDED,
         self::STATUS_STAFF_SUSPENDED,
-        self::STATUS_DELETED,
-        self::STATUS_CANCELLED,
     ];
 
     const TERMINATED_STATUS = [
         self::STATUS_DELETED,
         self::STATUS_CANCELLED,
+        self::STATUS_TERMINATED,
     ];
 }

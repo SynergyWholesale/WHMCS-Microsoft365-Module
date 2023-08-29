@@ -888,13 +888,6 @@ function synergywholesale_microsoft365_sync($params)
     $domainPrefixFieldId = $customFields[ProductEnums::CUSTOM_FIELD_NAME_DOMAIN_PREFIX]['fieldId'] ?? '';
     $previousDomainPrefixFieldValue = $customFields[ProductEnums::CUSTOM_FIELD_NAME_DOMAIN_PREFIX]['value'] ?? '';
 
-    // First we update service status if it is different with the remote status
-    if ($params['status'] != $tenantDetails['clientStatus']) {
-        $whmcsLocalDb->updateServiceStatus($params['serviceid'], $tenantDetails['clientStatus']);
-        // Add log for service status if it has changed
-        $success[] = "Service status was set from ({$params['status']}) to ({$tenantDetails['clientStatus']})";
-    }
-
     // Also update the domain prefix if they are different
     if ($previousDomainPrefixFieldValue != $tenantDetails['domainPrefix']) {
         $whmcsLocalDb->updateCustomFieldValues($domainPrefixFieldId, $params['serviceid'], $tenantDetails['domainPrefix']);
@@ -927,6 +920,10 @@ function synergywholesale_microsoft365_sync($params)
     // Get the current config options of this service and format it
     $localSubscriptionsWithQuantity = $whmcsLocalDb->getSubscriptionsForAction($params['serviceid'], 'sync');
 
+    // Count for suspended and terminated subscriptions
+    $suspendedCount = 0;
+    $terminatedCount = 0;
+
     $updatedSubscriptions = [];
     // If there are some remote subscriptions found from Synergy, we loop through and perform action accordingly
     foreach ($remoteSubscriptionsList as $remoteSubscription) {
@@ -937,6 +934,9 @@ function synergywholesale_microsoft365_sync($params)
 
         // If remote subscription is Cancelled or Terminated, we set quantity of local subscription to 0
         if (in_array($remoteSubscription['subscriptionStatus'], Status::TERMINATED_STATUS)) {
+            // For Cancelled or Terminated statuses, we want to check if all subscriptions have these statuses, then we update service's status to Cancelled
+            $terminatedCount++;
+
             if ($hostingConfigOptionQuantity != 0) {
                 // Update quantity to 0 for this service's config option
                 $whmcsLocalDb->updateHostingConfigOptionQuantity($hostingConfigOptionId);
@@ -959,6 +959,32 @@ function synergywholesale_microsoft365_sync($params)
         // Add this subscription value to an array holder, so we can update them all into the Remote Subscriptions custom field
         // Values are saved into WHMCS database as "productId|subscriptionId"
         $updatedSubscriptions[] = "{$remoteSubscription['productId']}|{$remoteSubscription['subscriptionId']}";
+
+        // For suspended subscriptions, we would want to count if all the subscriptions are suspended, then we set service's status to suspended
+        if (in_array($remoteSubscription['subscriptionStatus'], Status::SUSPENDED_STATUS)) {
+            $suspendedCount++;
+        }
+    }
+
+    // If all subscriptions in Synergy are Cancelled but WHMCS service status is not Cancelled or Terminated, then we update it to Cancelled
+    if ($terminatedCount == count($remoteSubscriptionsList) && !in_array($params['status'], Status::TERMINATED_STATUS)) {
+        $whmcsLocalDb->updateServiceStatus($params['serviceid'], Status::STATUS_CANCELLED);
+        // Add log for service status if it has changed
+        $success[] = "Service status was set from ({$params['status']}) to ( " . Status::STATUS_CANCELLED .")";
+    }
+
+    // If all subscriptions in Synergy are Suspended but WHMCS service status is not Suspended, then we update it to Suspended
+    if ($suspendedCount == count($remoteSubscriptionsList) && $params['status'] != Status::STATUS_SUSPENDED) {
+        $whmcsLocalDb->updateServiceStatus($params['serviceid'], Status::STATUS_SUSPENDED);
+        // Add log for service status if it has changed
+        $success[] = "Service status was set from ({$params['status']}) to ( " . Status::STATUS_SUSPENDED .")";
+    }
+
+    // Otherwise, if both situations above not correct and service status is different with remote status, we update it to match with the remote one
+    if ($params['status'] != $tenantDetails['clientStatus'] && $terminatedCount != count($remoteSubscriptionsList) && $suspendedCount != count($remoteSubscriptionsList)) {
+        $whmcsLocalDb->updateServiceStatus($params['serviceid'], $tenantDetails['clientStatus']);
+        // Add log for service status if it has changed
+        $success[] = "Service status was set from ({$params['status']}) to ({$tenantDetails['clientStatus']})";
     }
 
     // After the loop, we update the new subscriptions into the custom field
