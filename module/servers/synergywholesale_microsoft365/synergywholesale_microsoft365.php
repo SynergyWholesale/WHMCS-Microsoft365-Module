@@ -923,6 +923,7 @@ function synergywholesale_microsoft365_sync($params)
     // Count for suspended and terminated subscriptions
     $suspendedCount = 0;
     $terminatedCount = 0;
+    $activeCount = 0;
 
     $updatedSubscriptions = [];
     // If there are some remote subscriptions found from Synergy, we loop through and perform action accordingly
@@ -964,6 +965,11 @@ function synergywholesale_microsoft365_sync($params)
         if (in_array($remoteSubscription['subscriptionStatus'], Status::SUSPENDED_STATUS)) {
             $suspendedCount++;
         }
+
+        // For active or pending subscriptions we want to count them so we can set the service as active
+        if (in_array($remoteSubscription['subscriptionStatus'], Status::ACTIVE_STATUS)) {
+            $activeCount++;
+        }
     }
 
     // If all subscriptions in Synergy are Cancelled but WHMCS service status is not Cancelled or Terminated, then we update it to Cancelled
@@ -980,11 +986,18 @@ function synergywholesale_microsoft365_sync($params)
         $success[] = "Service status was set from ({$params['status']}) to ( " . Status::STATUS_SUSPENDED .")";
     }
 
-    // Otherwise, if both situations above not correct and service status is different with remote status, we update it to match with the remote one
-    if ($params['status'] != $tenantDetails['clientStatus'] && $terminatedCount != count($remoteSubscriptionsList) && $suspendedCount != count($remoteSubscriptionsList)) {
-        $whmcsLocalDb->updateServiceStatus($params['serviceid'], $tenantDetails['clientStatus']);
-        // Add log for service status if it has changed
-        $success[] = "Service status was set from ({$params['status']}) to ({$tenantDetails['clientStatus']})";
+    // Otherwise, if both situations above not correct, that means not all services are suspended or terminated, we can just check if there are some active subscriptions (then set service to active) or if there is no active subscriptions but more than one suspended subscriptions (then set service to suspend)
+    if ($terminatedCount != count($remoteSubscriptionsList) && $suspendedCount != count($remoteSubscriptionsList)) {
+        // If no active subscriptions but more than one suspended subscriptions, then set service to suspended if it's not
+        if ($activeCount == 0 && $suspendedCount > 0 && $params['status'] != Status::STATUS_SUSPENDED) {
+            $whmcsLocalDb->updateServiceStatus($params['serviceid'], Status::STATUS_SUSPENDED);
+            // Add log for service status if it has changed
+            $success[] = "Service status was set from ({$params['status']}) to (" . Status::STATUS_SUSPENDED . ")";
+        } else if ($activeCount > 0 && !in_array($params['status'], Status::ACTIVE_STATUS)) { // If more than one active subscriptions found, then we set service to active if it's not pending or active
+            $whmcsLocalDb->updateServiceStatus($params['serviceid'], Status::STATUS_ACTIVE);
+            // Add log for service status if it has changed
+            $success[] = "Service status was set from ({$params['status']}) to (" . Status::STATUS_ACTIVE . ")";
+        }
     }
 
     // After the loop, we update the new subscriptions into the custom field
