@@ -1,0 +1,13 @@
+{
+  "name": "synergy-wholesale-whmcs-microsoft365-module",
+  "description": "This repository contains the source code for the [Synergy Wholsale](https://synergywholesale.com/) WHMCS Microsoft 365 module.",
+  "dependencies": {
+    "minify": "^5.0.0",
+    "uglify-es": "^3.3.9"
+  },
+  "repository": {
+    "type": "git",
+    "url": "ssh://git@development.ventraip.com.au:7999/ws/whmcs-domain-module.git"
+  },
+  "license": "GPL-3.0"
+}

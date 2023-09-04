@@ -1,0 +1,43 @@
+{
+  "schema": "1.0",
+  "type": "whmcs-microsoft365",
+  "name": "synergywholesale_microsoft365",
+  "license": "GPLv3",
+  "category": "others",
+  "description": {
+    "name": "Synergy Wholesale Microsoft 365 v{{VERSION}}",
+    "tagline": "Resell your Microsoft Office 365 subscriptions with Australia's Favourite Wholesaler",
+    "long": "Not a Synergy Wholesale partner yet? [Become one today|https://synergywholesale.com/become-a-partner/]",
+    "features": {
+      "admin_area": [
+        "Create New Tenant & Subscription",
+        "Suspend / Unsuspend / Terminate Subscriptions",
+        "Create New Tenant With Every Order",
+        "Change Package / Change Subscriptions",
+        "Accept Microsoft Customer Agreement",
+        "Module and System Logs For Debugging Information"
+      ],
+      "client_area": [
+        "View And Accept Microsoft Customer Agreement",
+        "Customised Template For Client Area -> Product Details",
+        "Module Commands Triggered Accordingly With Client's Actions",
+        "Navigate To Microsoft 365 Management Portal Login"
+      ]
+    }
+  },
+  "logo": {
+    "filename": "logo.png"
+  },
+  "support": {
+    "homepage": "https:\/\/synergywholesale.com\/",
+    "learn_more": "https:\/\/synergywholesale.com\/faq\/category\/api-whmcs-modules\/domain-registrar-module\/",
+    "support_url": "https:\/\/synergywholesale.com\/support\/",
+    "docs_url": "https:\/\/synergywholesale.com\/faq\/article\/installing-the-whmcs-domain-registrar-module\/"
+  },
+  "authors": [
+    {
+      "name": "Manh Huy Vo (Eric), Synergy Wholesale",
+      "homepage": "https:\/\/github.com\/manhhuyvo\/"
+    }
+  ]
+}
