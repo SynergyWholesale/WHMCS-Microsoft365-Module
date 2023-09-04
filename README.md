@@ -16,14 +16,14 @@ If you would like to report a bug or request a new feature/improvement for our m
     - Module Create New Tenant & Subscriptions
     - Module Suspend / Unsuspend / Terminate Subscriptions
     - Module Change Package / Change Subscriptions
+    - Module Synchronize Remote Data
     - Create New Tenant With Every Order Events (Order placed, First payment received, Order accepted)
+    - Product Automatically Set Up (Configuration Options and Custom Fields)
     - Accept Microsoft Customer Agreement
     - Module and System Logs For Debugging Information
 - Client Area Features
-    - View And Accept Microsoft Customer Agreement
     - Customised Template For Product Details page in Client Area
     - Module Commands Triggered Accordingly With Client's Actions (Place New Order, Make Payment, Change Plan Request accepted)
-    - Navigate To Microsoft 365 Management Portal Login
 
 # Installation
 ---
