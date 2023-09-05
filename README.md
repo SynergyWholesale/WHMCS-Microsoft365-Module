@@ -1,8 +1,8 @@
 # Synergy Wholesale WHMCS Microsoft 365 Module
 
-![Tests](https://github.com/synergywholesale/whmcs-domains-module/workflows/Tests/badge.svg?branch=master&event=push)
+![Tests](https://github.com/synergywholesale/whmcs-microsoft365-module/workflows/Tests/badge.svg?branch=master&event=push)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Contributors welcome](https://img.shields.io/badge/Contributors-welcome-brightgreen.svg)](https://github.com/synergywholesale/whmcs-domains-module/blob/master/CONTRIBUTING.md)
+[![Contributors welcome](https://img.shields.io/badge/Contributors-welcome-brightgreen.svg)](https://github.com/synergywholesale/whmcs-microsoft365-module/blob/master/CONTRIBUTING.md)
 
 This repository contains the source code for the [Synergy Wholesale](https://synergywholesale.com/) WHMCS Microsoft 365 Module.
 
@@ -13,21 +13,21 @@ If you would like to report a bug or request a new feature/improvement for our m
 ## Features
 ---
 - Admin Area Features
-    - Module Create New Tenant & Subscriptions
-    - Module Suspend / Unsuspend / Terminate Subscriptions
-    - Module Change Package / Change Subscriptions
-    - Module Synchronize Remote Data
-    - Create New Tenant With Every Order Events (Order placed, First payment received, Order accepted)
-    - Product Automatically Set Up (Configuration Options and Custom Fields)
-    - Accept Microsoft Customer Agreement
-    - Module and System Logs For Debugging Information
+  - Module Create New Tenant & Subscriptions
+  - Module Suspend / Unsuspend / Terminate Subscriptions
+  - Module Change Package / Change Subscriptions
+  - Module Synchronize Remote Data
+  - Create New Tenant With Every Order Events (Order placed, First payment received, Order accepted)
+  - Product Automatically Set Up (Configuration Options and Custom Fields)
+  - Accept Microsoft Customer Agreement
+  - Module and System Logs For Debugging Information
 - Client Area Features
-    - Customised Template For Product Details page in Client Area
-    - Module Commands Triggered Accordingly With Client's Actions (Place New Order, Make Payment, Change Plan Request accepted)
+  - Customised Template For Product Details page in Client Area
+  - Module Commands Triggered Accordingly With Client's Actions (Place New Order, Make Payment, Change Plan Request accepted)
 
 # Installation
 ---
-The [following guide](https://synergywholesale.com/faq/article/installing-the-whmcs-domain-registrar-module/) will assist you in installation and configuration of the Synergy Wholesale WHMCS Microsoft 365 Module into your WHMCS installation
+The [following guide](https://synergywholesale.com/faq/article/setting-up-microsoft-365-products-with-synergy-wholesales-whmcs-module/) will assist you in installation and configuration of the Synergy Wholesale WHMCS Microsoft 365 Module into your WHMCS installation
 
 ## Minimum Requirements
 ---
