@@ -1,6 +1,6 @@
 # Synergy Wholesale WHMCS Microsoft 365 Module
 
-![Tests](https://github.com/synergywholesale/whmcs-microsoft365-module/workflows/Tests/badge.svg?branch=master&event=push)
+![Tests](https://github.com/synergywholesale/whmcs-microsoft365-module/workflows/Tests/badge.svg)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Contributors welcome](https://img.shields.io/badge/Contributors-welcome-brightgreen.svg)](https://github.com/synergywholesale/whmcs-microsoft365-module/blob/master/CONTRIBUTING.md)
 
