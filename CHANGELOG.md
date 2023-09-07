@@ -25,15 +25,18 @@ Synergy Wholesale WHMCS Microsoft 365 Module
 - Change Password
 - Accept Microsoft Customer Agreement
 - View Debug Information
-**Client Area Features**
+
+**Client Area Features:**
 - View And Accept Microsoft Customer Agreement
 - Provide Custom User Domain
 - Set a custom m365 domain prefix
-**Standard Provisioning**
+
+**Standard Provisioning:**
 - Automatically Create Office 365 Customer/User/Subscription
 - Upgrade/Downgrade Office 365 Subscriptions
 - Go To Office 365 Panel
-**Supported Products**
+
+**Supported Products:**
 - Microsoft 365 Business Standard
 - Microsoft 365 Business Premium
 - Exchange Online 1
