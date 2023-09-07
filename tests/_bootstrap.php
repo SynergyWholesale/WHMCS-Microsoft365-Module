@@ -12,7 +12,7 @@ if (!defined('WHMCS')) {
 }
 
 // Include the module.
-require_once __DIR__ . '/../modules/servers/synergywholesale_microsoft365/synergywholesale_microsoft365.php';
+require_once __DIR__ . '/../module/servers/synergywholesale_microsoft365/synergywholesale_microsoft365.php';
 
 /**
  * Mock logModuleCall function for testing purposes.
