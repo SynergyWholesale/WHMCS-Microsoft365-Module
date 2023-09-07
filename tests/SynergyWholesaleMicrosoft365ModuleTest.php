@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
  * @license https://github.com/synergywholesale/whmcs-microsoft365-module/LICENSE
  */
 
-class SyenrgyWholesaleMicrosoft365ModuleTest extends TestCase
+class SynergyWholesaleMicrosoft365ModuleTest extends TestCase
 {
     public static function providerCoreFunctionNames()
     {
