@@ -13,5 +13,5 @@
     </rule>
     <rule ref="PSR12"/>
     <rule ref="Generic.PHP.Syntax"/>
-    <file>modules/servers/synergywholesale_microsoft365/synergywholesale_microsoft365.php</file>
+    <file>module/servers/synergywholesale_microsoft365/</file>
 </ruleset>
