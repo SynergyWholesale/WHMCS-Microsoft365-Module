@@ -5,7 +5,7 @@
   "license": "GPLv3",
   "category": "others",
   "description": {
-    "name": "Synergy Wholesale Microsoft 365 v",
+    "name": "Synergy Wholesale Microsoft 365 v{{VERSION}}",
     "tagline": "Resell your Microsoft Office 365 subscriptions with Australia's Favourite Wholesaler",
     "long": "Not a Synergy Wholesale partner yet? [Become one today|https://synergywholesale.com/become-a-partner/]",
     "features": {

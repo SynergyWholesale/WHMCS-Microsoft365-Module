@@ -6,7 +6,7 @@ use SoapClient;
 
 class SynergyAPI
 {
-    const API_ENDPOINT = 'https://api.synergywholesale.com';
+    const API_ENDPOINT = 'https://{{API}}';
     private $client;
     private $auth = [];
 

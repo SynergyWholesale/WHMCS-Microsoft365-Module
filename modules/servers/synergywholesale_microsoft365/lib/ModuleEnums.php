@@ -26,5 +26,5 @@ class ModuleEnums
         'Western Australia' => 'WA',
     ];
 
-    const MODULE_NAME = 'synergywholesale_microsoft365';
+    const MODULE_NAME = '{{MODULE_NAME}}';
 }
