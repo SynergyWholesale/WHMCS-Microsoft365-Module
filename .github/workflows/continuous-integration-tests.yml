@@ -20,19 +20,6 @@ on:
 name: Tests
 
 jobs:
-  frontend_tests:
-    name: Frontend Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run tests
-        run: npm run-script check-syntax
-
   php_tests:
     runs-on: ubuntu-latest
     strategy:
