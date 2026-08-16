@@ -14,11 +14,9 @@
         "Suspend / Unsuspend / Terminate Subscriptions",
         "Create New Tenant With Every Order",
         "Change Package / Change Subscriptions",
-        "Accept Microsoft Customer Agreement",
         "Module and System Logs For Debugging Information"
       ],
       "client_area": [
-        "View And Accept Microsoft Customer Agreement",
         "Customised Template For Client Area -> Product Details",
         "Module Commands Triggered Accordingly With Client's Actions",
         "Navigate To Microsoft 365 Management Portal Login"

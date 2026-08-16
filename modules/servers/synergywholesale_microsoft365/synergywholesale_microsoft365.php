@@ -100,7 +100,6 @@ function synergywholesale_microsoft365_CreateAccount($params)
         $otherData = [
             'password' => $newRawPassword ?? $params['password'], // If new password was created, we use that. Otherwise, just use the current one
             'description' => $params['domain'] ?? ($clientObj->description ?? ''),
-            'agreement' => !empty($customFields[ProductEnums::CUSTOM_FIELD_NAME_CUSTOMER_AGREEMENT]['value']) && $customFields['Customer Agreement']['value'] == 'on',
             'domainPrefix' => $customFields[ProductEnums::CUSTOM_FIELD_NAME_DOMAIN_PREFIX]['value'] ?? '', // If domain prefix is set, then we use this value, otherwise just leave it blank and Synergy API will generate a random string for it
         ];
 
