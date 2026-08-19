@@ -15,6 +15,27 @@ Synergy Wholesale WHMCS Microsoft 365 Module
 ### Removed
 -
 
+## 1.2.0 [Updated 17/08/2026]
+### Added
+**New SKU's:**
+- Microsoft 365 Business Basic (No Teams) and Microsoft 365 Copilot Business
+- Microsoft 365 Business Basic and Microsoft 365 Copilot Business
+- Microsoft 365 Business Standard (No Teams) and Microsoft 365 Copilot Business
+- Microsoft 365 Business Standard and Microsoft 365 Copilot Business
+- Microsoft 365 Business Premium (No Teams) and Microsoft 365 Copilot Business
+- Microsoft 365 Business Premium and Microsoft 365 Copilot Business
+- Microsoft 365 Copilot Business
+- Microsoft 365 Apps for Business
+- Microsoft 365 Business Basic (No Teams)
+- Microsoft 365 Business Standard (No Teams)
+- Microsoft 365 Business Premium (No Teams)
+- Microsoft 365 E3
+- Microsoft 365 F3
+
+## 1.1.0 [Updated 17/08/2026]
+### Removed
+- MCuA Agreement
+
 ## 1.0.0 [Updated 07/09/2023]
 
 ### Added
