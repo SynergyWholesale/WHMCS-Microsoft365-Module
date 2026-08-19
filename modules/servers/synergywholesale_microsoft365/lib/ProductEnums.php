@@ -16,6 +16,20 @@ class ProductEnums
     const CONFIG_OPTION_PREMIUM_NAME = 'Microsoft 365 Business Premium';
     const CONFIG_OPTION_EXCHANGE_ONE = 'Exchange Online (Plan 1)';
     const CONFIG_OPTION_EXCHANGE_TWO = 'Exchange Online (Plan 2)';
+    const CONFIG_OPTION_BASIC_NO_TEAMS_AND_COPILOT = 'Microsoft 365 Business Basic (No Teams) and Microsoft 365 Copilot Business';
+    const CONFIG_OPTION_BASIC_AND_COPILOT = 'Microsoft 365 Business Basic and Microsoft 365 Copilot Business';
+    const CONFIG_OPTION_STANDARD_NO_TEAMS_AND_COPILOT = 'Microsoft 365 Business Standard (No Teams) and Microsoft 365 Copilot Business';
+    const CONFIG_OPTION_STANDARD_AND_COPILOT = 'Microsoft 365 Business Standard and Microsoft 365 Copilot Business';
+    const CONFIG_OPTION_PREMIUM_NO_TEAMS_AND_COPILOT = 'Microsoft 365 Business Premium (No Teams) and Microsoft 365 Copilot Business';
+    const CONFIG_OPTION_PREMIUM_AND_COPILOT = 'Microsoft 365 Business Premium and Microsoft 365 Copilot Business';
+    const CONFIG_OPTION_COPILOT = 'Microsoft 365 Copilot Business';
+    const CONFIG_OPTION_APPS = 'Microsoft 365 Apps for Business';
+    const CONFIG_OPTION_BASIC_NO_TEAMS = 'Microsoft 365 Business Basic (No Teams)';
+    const CONFIG_OPTION_STANDARD_NO_TEAMS = 'Microsoft 365 Business Standard (No Teams)';
+    const CONFIG_OPTION_PREMIUM_NO_TEAMS = 'Microsoft 365 Business Premium (No Teams)';
+    const CONFIG_OPTION_E3 = 'Microsoft 365 E3';
+    const CONFIG_OPTION_F3 = 'Microsoft 365 F3';
+
 
     /** CONSTANTS FOR CONFIG OPTION TYPES */
     const OPTION_TYPE_QUANTITY = 4;
@@ -65,6 +79,123 @@ class ProductEnums
         [
             'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
             'optionname' => self::CONFIG_OPTION_EXCHANGE_TWO,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_BASIC_NO_TEAMS_AND_COPILOT,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_BASIC_AND_COPILOT,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_STANDARD_NO_TEAMS_AND_COPILOT,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_STANDARD_AND_COPILOT,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_PREMIUM_NO_TEAMS_AND_COPILOT,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_PREMIUM_AND_COPILOT,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_COPILOT,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_APPS,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_BASIC_NO_TEAMS,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_STANDARD_NO_TEAMS,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_PREMIUM_NO_TEAMS,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_E3,
+            'optiontype' => self::OPTION_TYPE_QUANTITY,
+            'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
+            'qtymaximum' => self::DEFAULT_MAX_QUANTITY,
+            'order' => self::DEFAULT_ORDER,
+            'hidden' => self::DEFAULT_HIDDEN,
+        ],
+        [
+            'group' => self::CONFIG_GROUP_MICROSOFT_365_NAME,
+            'optionname' => self::CONFIG_OPTION_F3,
             'optiontype' => self::OPTION_TYPE_QUANTITY,
             'qtyminimum' => self::DEFAULT_MIN_QUANTITY,
             'qtymaximum' => self::DEFAULT_MAX_QUANTITY,

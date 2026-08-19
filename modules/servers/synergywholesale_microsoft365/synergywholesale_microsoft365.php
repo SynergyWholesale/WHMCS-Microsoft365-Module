@@ -1037,8 +1037,8 @@ function synergywholesale_microsoft365_AdminCustomButtonArray() {
 function synergywholesale_microsoft365_AdminServicesTabFields($params)
 {
     return [
-        "<span style='color: red; font-weight: bold; height: 100%'>IMPORTANT</span>" => "<span style='font-weight: bold'>PLEASE NOTE: CHANGING <span style='text-decoration: underline; color: red;'>THE REMOTE TENANT ID</span>, <span style='text-decoration: underline; color: red;'>DOMAIN PREFIX</span> OR <span style='text-decoration: underline; color: red;'>REMOTE SUBSCRIPTION FIELDS</span> IS NOT RECOMMENDED AND CAN CAUSE ISSUES WITH THE CONNECTION TO YOUR CLIENT/SUBSCRIPTIONS IN SYNERGY WHOLESALE</span>",
-        '' => "<span style='font-weight: bold'>PLEASE ONLY MODIFY IF YOU ARE CERTAIN ABOUT THE CHANGES BEING MADE</span>",
+        "<span style='color: red; font-weight: bold; height: 100%'>IMPORTANT</span>" => "<span style='font-weight: bold'>PLEASE NOTE: CHANGING <span style='text-decoration: underline; color: red;'>THE REMOTE TENANT ID</span>, <span style='text-decoration: underline; color: red;'>DOMAIN PREFIX</span> OR <span style='text-decoration: underline; color: red;'>REMOTE SUBSCRIPTION FIELDS</span> IS NOT RECOMMENDED AND CAN CAUSE ISSUES WITH THE CONNECTION TO YOUR CLIENT/SUBSCRIPTIONS IN SYNERGY WHOLESALE. PLEASE ONLY MODIFY IF YOU ARE CERTAIN ABOUT THE CHANGES BEING MADE</span>",
+        '' => "<span style='font-weight: bold'>SUBSCRIPTION ORDERS PLACED DIRECTLY THROUGH WHMCS WILL BE BILLED ON A PRO-RATA BASIS IN SYNERGY WHOLESALE. PLEASE PLACE ANNUAL OR ANNIVERSARY MONTHLY SUBSCRIPTIONS DIRECTLY THROUGH THE MANAGEMENT SYSTEM, AND SYNCHRONISE TO WHMCS.</span>",
     ];
 }
 
