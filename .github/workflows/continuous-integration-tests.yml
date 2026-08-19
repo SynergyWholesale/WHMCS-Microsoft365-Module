@@ -1,40 +1,47 @@
 on:
   push:
-    # Sequence of patterns matched against refs/tags
-    tags:
-      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+    branches:
+      branches: [master, main]
+    tags-ignore:
+      - "v*"
+    paths-ignore:
+      - "**.css"
+      - "**.tpl"
+      - "**.txt"
+      - "**.md"
+  pull_request:
+    branches:
+      branches: [master, main]
+    paths-ignore:
+      - "**.css"
+      - "**.tpl"
+      - "**.md"
+      - "**.txt"
+      - "**.yml"
 
-name: Release
+name: Tests
 
 jobs:
-  build:
-    name: Upload Release Asset
+  php_tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-versions: ["7.2", "7.3", "7.4", "8.1", "8.2", "8.3", "8.4", "8.5"]
+    name: PHP ${{ matrix.php-versions }} Test
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Build project
-        run: make build
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-      - name: Get the version
-        id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ./synergy-wholesale-microsoft365-${{ steps.get_version.outputs.VERSION }}.zip
-          asset_name: synergy-wholesale-microsoft365-${{ steps.get_version.outputs.VERSION }}.zip
-          asset_content_type: application/zip
+          php-version: ${{ matrix.php-versions }}
+          coverage: none
+          extensions: soap
+          tools: composer, phpcs, phpunit:8.5.29
+
+      - name: Check Style/Syntax
+        run: phpcs
+
+      - name: Run Tests
+        run: phpunit
